@@ -40,7 +40,7 @@ the plan.
 
 **Covers:** FR-1, FR-2, FR-5, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12
 
-- [ ] **Done when:** `npx tsc --noEmit` passes and all five type files exist
+- [x] **Done when:** `npx tsc --noEmit` passes and all five type files exist
   with correct interfaces matching the plan's type definitions.
 
 ---
@@ -65,7 +65,7 @@ Write the first migration:
 **Covers:** FR-1, FR-2, FR-3, FR-5, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12,
 NFR-1, NFR-2
 
-- [ ] **Done when:** a test opens a temp database, calls `runMigrations`,
+- [x] **Done when:** a test opens a temp database, calls `runMigrations`,
   and confirms all 4 tables plus `_migrations` exist. Running migrations
   twice is idempotent. `app_meta` contains `next_note_number = '1'`.
 
@@ -87,7 +87,7 @@ Write `src/main/db/__tests__/instrument-repository.test.ts`:
 
 **Covers:** FR-9, FR-10
 
-- [ ] **Done when:** `npm test -- instrument-repository` passes all 3 test
+- [x] **Done when:** `npm test -- instrument-repository` passes all 3 test
   cases.
 
 ---
@@ -119,7 +119,7 @@ Write `src/main/db/__tests__/note-repository.test.ts` (create + read cases):
 **Covers:** FR-1, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-10, FR-11, FR-13,
 FR-14, NFR-3, Edge: duplicate titles, Edge: BPM bounds, Edge: null vs empty
 
-- [ ] **Done when:** `npm test -- note-repository` passes all 10 test cases.
+- [x] **Done when:** `npm test -- note-repository` passes all 10 test cases.
 
 ---
 
@@ -145,7 +145,7 @@ Add test cases to `note-repository.test.ts`:
 
 **Covers:** FR-1, FR-8, FR-15, Edge: orphaned instruments
 
-- [ ] **Done when:** `npm test -- note-repository` passes all previous +
+- [x] **Done when:** `npm test -- note-repository` passes all previous +
   6 new test cases (16 total).
 
 ---
@@ -171,7 +171,7 @@ envelope.
 
 **Covers:** FR-15, FR-16, all FRs via delegation
 
-- [ ] **Done when:** all handler files compile (`npx tsc --noEmit`), each
+- [x] **Done when:** all handler files compile (`npx tsc --noEmit`), each
   handler is exported as a registration function that accepts
   `ipcMain` and `Database`, and the delete handler includes the
   `ENOENT` graceful path.
@@ -198,7 +198,7 @@ Create `src/main/index.ts` (minimal Electron stub):
 
 **Covers:** — (integration wiring, all FRs are covered by prior tasks)
 
-- [ ] **Done when:** `npx tsc --noEmit` passes for the full project,
+- [x] **Done when:** `npx tsc --noEmit` passes for the full project,
   `npm test` still passes all tests, and the preload exposes all 6
   IPC channels defined in the plan.
 
