@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Desktop app for organizing musical ideas",
   "main": "dist/main/index.js",
+  "type": "module",
   "scripts": {
     "build:main": "tsc -p tsconfig.main.json",
     "test": "vitest run",

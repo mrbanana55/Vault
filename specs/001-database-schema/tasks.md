@@ -40,7 +40,7 @@ the plan.
 
 **Covers:** FR-1, FR-2, FR-5, FR-6, FR-7, FR-8, FR-9, FR-11, FR-12
 
-- [ ] **Done when:** `npx tsc --noEmit` passes and all five type files exist
+- [x] **Done when:** `npx tsc --noEmit` passes and all five type files exist
   with correct interfaces matching the plan's type definitions.
 
 ---
