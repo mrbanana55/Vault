@@ -155,3 +155,137 @@ Today's session specified, planned, and implemented **Spec 002: Audio I/O Manage
 ## Next Steps
 
 1. **Spec 003 (UI & Audio Player/Recorder):** Build React frontend components, audio recorder hook (`getUserMedia`), custom `vault-audio://` streaming protocol with HTTP range requests for scrubbing, Web Audio playback engine, and integration with `window.vaultAPI`.
+
+---
+
+---
+
+# Session Log — 2026-09-03
+
+## Executive Summary
+
+Today's session specified, planned, and implemented **Spec 003: IPC Bridge & Contracts**. We formalized the communication boundary between the Electron Main process and Renderer process into a contract-driven, strictly typed, and security-hardened architecture. We established a centralized IPC channel registry, unified shared types and window interface augmentations, implemented robust error coercion for all handlers, hardened preload security isolation, and added typed `ArrayBuffer` binary audio ingestion. All 23 tasks across 8 phases were completed with 100% test pass rate (64 passing tests across 7 test suites).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Clarification & Planning (SDD)
+- **Spec 003 Authored:** [`specs/003-ipc-bridge-contracts/spec.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/spec.md) covering 5 prioritized user stories (typed bridge interface, centralized channel registry, consistent error envelopes, security boundary enforcement, binary audio payload transfer) and 15 functional requirements.
+- **Ambiguity Clarification:** Executed `/speckit-clarify` verifying how the Renderer accesses audio note metadata (`authors`, `notes`, `bpm`, `musical_key`, etc.) via complete entity retrieval through `getById` and `getAll`.
+- **Technical Plan & Artifacts:** Authored [`plan.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/plan.md), [`research.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/research.md), [`data-model.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/data-model.md), [`contracts/ipc-contract.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/contracts/ipc-contract.md), and [`quickstart.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/quickstart.md).
+- **Task Breakdown:** Authored [`tasks.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/003-ipc-bridge-contracts/tasks.md) containing 23 granular tasks organized by phase and user story.
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Configured `@shared` and `@shared/*` path mappings in `tsconfig.json` and verified `vitest.config.ts`. Created root shared barrel `src/shared/index.ts`. | ✅ Done |
+| **Phase 2: Foundational** | Created `src/shared/ipc-channels.ts` defining `IPC_CHANNELS` constant with `as const` string literal types. Created `src/shared/types/vault-api.ts` defining `VaultAPI` interface and `Window` interface augmentation. Re-exported in `src/shared/types/index.ts` and removed deprecated `src/preload/vaultAPI.d.ts`. | ✅ Done |
+| **Phase 3: US1 Typed Bridge** | Refactored `src/preload/index.ts` to implement `vaultAPI: VaultAPI` returning typed `Promise<IPCResult<T>>`. Updated `src/preload/__tests__/preload.test.ts` verifying all 6 bridge methods invoke IPC and return typed envelopes. | ✅ Done |
+| **Phase 4: US2 Channel Registry** | Refactored `note-handlers.ts`, `instrument-handlers.ts`, and `preload/index.ts` to use `IPC_CHANNELS.*` constants. Updated all handler and preload tests to assert against constants. Confirmed 0 raw channel string literals remain in source. | ✅ Done |
+| **Phase 5: US3 Error Envelopes** | Implemented `toErrorMessage(err: unknown): string` utility in `src/shared/types/ipc.ts`. Updated all note and instrument handler catch blocks to use `toErrorMessage`. Added unit tests for failure envelopes and non-Error throw coercion. | ✅ Done |
+| **Phase 6: US4 Security Boundaries** | Hardened `BrowserWindow` `webPreferences` in `src/main/index.ts` with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`. Added security tests in `preload.test.ts` ensuring `contextBridge.exposeInMainWorld` only exposes `vaultAPI` without leaking Node or Electron internals. | ✅ Done |
+| **Phase 7: US5 Audio IPC Payload** | Added `AudioPayload` interface in `src/shared/types/audio.ts` and updated `CreateAudioNoteInput` in `src/shared/types/audio-note.ts` to support `audio_buffer?: ArrayBuffer` and `format?: AudioFormat`. Implemented `Buffer.from(input.audio_buffer)` conversion, validation, and disk write via `AudioStorageService` in `note-handlers.ts`. Added unit tests verifying binary byte length matching and header validation. | ✅ Done |
+| **Phase 8: Polish & Cross-Cutting** | Verified zero raw channel string literals with grep (SC-001). Executed TypeScript strict type checks on both project configs (`npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit`). Verified build via `npm run build:main`. Ran full test suite. | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 64 tests across 7 test suites (`npm test`):
+     - `validate-audio-header.test.ts`: 7 tests
+     - `audio-storage-service.test.ts`: 15 tests
+     - `migrations.test.ts`: 3 tests
+     - `instrument-repository.test.ts`: 4 tests
+     - `note-repository.test.ts`: 16 tests
+     - `ipc-handlers.test.ts`: 13 tests (+8 new tests for US3 error coercion and US5 audio payloads)
+     - `preload.test.ts`: 6 tests (+4 new tests for US4 security boundaries and typed returns)
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit` pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build:main` compiles cleanly into `dist/main`.
+4. **Security & Channel Audits:**
+   - 0 raw channel string literals in `src/main/ipc/` and `src/preload/`.
+   - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` verified.
+
+---
+
+## Next Steps
+
+1. Completed: Spec 004 (Audio Capture & Real-Time Recording).
+
+---
+
+---
+
+# Session Log — 2026-09-03 (Part 2)
+
+## Executive Summary
+
+Today's afternoon session specified, planned, and implemented **Spec 004: Audio Capture & Real-Time Recording**. Following strict Spec-Driven Development (SDD) and constitutional principles (Process Separation, Stack Simplicity, Data Integrity, Unified Language), we delivered a complete audio capture engine in the Renderer process alongside an extended IPC bridge for direct audio persistence. 26 tasks across 7 phases were completed with 100% test pass rate (92 passing tests across 12 test suites, up from 64).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Clarification & Planning (SDD)
+- **Spec 004 Authored:** [`specs/004-audio-capture/spec.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/spec.md) covering 4 prioritized user stories (record idea, input device selection, hot-plug change detection, volume metering with input gain control), 19 functional requirements, and 6 measurable success criteria.
+- **Clarification Session:** Executed `/speckit-clarify` resolving:
+  - Deferral of VST/effects to keep focus on clean capture and Stack Simplicity.
+  - Recording input gain (destructive scaling before disk write, 0.0 to 2.0).
+  - Dual volume metering (pre-gain raw input and post-gain recorded level with clipping indicator).
+- **Technical Plan & Artifacts:** Authored [`plan.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/plan.md), [`research.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/research.md), [`data-model.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/data-model.md), [`contracts/audio-capture-contract.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/contracts/audio-capture-contract.md), and [`quickstart.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/quickstart.md).
+- **Task Breakdown:** Authored [`tasks.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/004-audio-capture/tasks.md) containing 26 granular tasks organized by phase and user story.
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Implemented `src/shared/types/audio-capture.ts` defining `AudioInputDevice`, `RecordingState`, `RECORDING_STATES`, `VolumeMeterLevels`, and `SaveAudioFileInput`. Re-exported in `src/shared/types/index.ts`. Added `AUDIO: { SAVE_FILE: 'audio:save-file' }` to `src/shared/ipc-channels.ts`. Augmented `VaultAPI` with `saveAudioFile`. | ✅ Done |
+| **Phase 2: Foundational** | Implemented `src/main/ipc/audio-handlers.ts` for `IPC_CHANNELS.AUDIO.SAVE_FILE` with Buffer ingestion and `AudioStorageService` file persistence. Registered in `src/main/ipc/index.ts`. Implemented `saveAudioFile` in `src/preload/index.ts`. Added unit tests in `ipc-handlers.test.ts` and `preload.test.ts`. | ✅ Done |
+| **Phase 3: US1 Record Idea** | Implemented 16-bit linear PCM WAV encoder in `src/renderer/audio/wav-encoder.ts` with 44-byte RIFF/WAVE header. Implemented `AudioRecorder` engine in `src/renderer/audio/audio-recorder.ts` coordinating `AudioContext`, `MediaStream`, `GainNode`, dual `AnalyserNode`, and `MediaRecorder`. Added unit tests in `wav-encoder.test.ts` and `audio-recorder.test.ts`. | ✅ Done |
+| **Phase 4: US2 Device Selection** | Implemented `getAudioInputDevices`, `getSelectedDeviceId`, and `setSelectedDeviceId` in `src/renderer/audio/device-manager.ts`. Integrated `deviceId: { exact: id }` constraint into `AudioRecorder.startRecording(deviceId)`. Added unit tests in `device-manager.test.ts`. | ✅ Done |
+| **Phase 5: US3 Hot-Plug Detection** | Implemented `subscribeToDeviceChanges` in `src/renderer/audio/device-manager.ts` with default fallback and listener cleanup. Implemented track `ended` listener in `AudioRecorder` to safely finalize and salvage partial audio mid-recording on disconnect. Added unit tests in `hot-plug.test.ts`. | ✅ Done |
+| **Phase 6: US4 Metering & Gain** | Implemented `calculateAudioLevels` in `src/renderer/audio/meter-service.ts` calculating RMS power, Peak amplitude, and clipping detection ($\ge 0.99$). Integrated dual `AnalyserNode` instances and `setInputGain(gain)` in `AudioRecorder`. Added unit tests in `meter-service.test.ts`. | ✅ Done |
+| **Phase 7: Polish & Audits** | Created barrel export `src/renderer/audio/index.ts`. Verified 0 `any` usage with `tsc` on both configs. Verified zero Node.js `fs` or `path` imports in `src/renderer/`. Ran full test suite (92 passing tests). Verified clean `build:main`. | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 92 tests across 12 test suites (`npm test`):
+     - `validate-audio-header.test.ts`: 7 tests
+     - `audio-storage-service.test.ts`: 15 tests
+     - `migrations.test.ts`: 3 tests
+     - `instrument-repository.test.ts`: 4 tests
+     - `note-repository.test.ts`: 16 tests
+     - `ipc-handlers.test.ts`: 15 tests (+2 for `audio:save-file`)
+     - `preload.test.ts`: 7 tests (+1 for `saveAudioFile`)
+     - `wav-encoder.test.ts`: 4 tests (NEW)
+     - `audio-recorder.test.ts`: 9 tests (NEW)
+     - `device-manager.test.ts`: 4 tests (NEW)
+     - `hot-plug.test.ts`: 3 tests (NEW)
+     - `meter-service.test.ts`: 5 tests (NEW)
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit` pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build:main` compiles cleanly into `dist/main`.
+4. **Process Separation & Security Audits:**
+   - Zero `fs`, `path`, or `child_process` imports in `src/renderer/`.
+   - All disk operations handled in Main process via `AudioStorageService`.
+
+---
+
+## Next Steps
+
+1. **Spec 005 (Renderer Foundation & React UI):** Build React frontend components, Tailwind CSS styling, core layout (note list, audio player, VU meters, record button, device picker dropdown), and wire up React state to `AudioRecorder` and `window.vaultAPI`.
+

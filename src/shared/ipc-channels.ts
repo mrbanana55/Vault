@@ -13,6 +13,9 @@ export const IPC_CHANNELS = {
   INSTRUMENTS: {
     GET_ALL: 'instruments:get-all',
   },
+  AUDIO: {
+    SAVE_FILE: 'audio:save-file',
+  },
 } as const;
 
 export type IPCChannels = typeof IPC_CHANNELS;

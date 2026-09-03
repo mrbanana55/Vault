@@ -75,6 +75,25 @@ describe('Preload Bridge (vaultAPI)', () => {
     expect(res).toEqual({ success: true, data: mockInstruments });
   });
 
+  it('exposes saveAudioFile calling audio:save-file and returning typed IPCResult', async () => {
+    const mockResult = {
+      relativePath: 'recordings/abc.wav',
+      absolutePath: '/vault/recordings/abc.wav',
+      format: 'wav',
+      sizeBytes: 1024,
+    };
+    (ipcRenderer.invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true, data: mockResult });
+
+    const dummyBuffer = new ArrayBuffer(8);
+    const res = await vaultAPI.saveAudioFile(dummyBuffer, 'wav');
+
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO.SAVE_FILE, {
+      buffer: dummyBuffer,
+      format: 'wav',
+    });
+    expect(res).toEqual({ success: true, data: mockResult });
+  });
+
   describe('Security Boundaries (US4)', () => {
     it('calls contextBridge.exposeInMainWorld for vaultAPI upon loading preload', async () => {
       vi.resetModules();
@@ -83,9 +102,10 @@ describe('Preload Bridge (vaultAPI)', () => {
       expect(electron.contextBridge.exposeInMainWorld).toHaveBeenCalledWith('vaultAPI', preloadModule.vaultAPI);
     });
 
-    it('vaultAPI contains only notes and instruments namespaces, without exposing ipcRenderer or Node internals', () => {
+    it('vaultAPI contains only notes, instruments, and saveAudioFile without exposing ipcRenderer or Node internals', () => {
       const keys = Object.keys(vaultAPI);
-      expect(keys.sort()).toEqual(['instruments', 'notes']);
+      expect(keys.sort()).toEqual(['instruments', 'notes', 'saveAudioFile']);
+      expect(typeof vaultAPI.saveAudioFile).toBe('function');
 
       expect('ipcRenderer' in vaultAPI).toBe(false);
       expect('require' in vaultAPI).toBe(false);

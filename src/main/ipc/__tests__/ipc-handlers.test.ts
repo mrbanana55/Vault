@@ -6,6 +6,7 @@ import Database from 'better-sqlite3';
 import { runMigrations } from '../../db/migrations';
 import { registerNoteHandlers } from '../note-handlers';
 import { registerInstrumentHandlers } from '../instrument-handlers';
+import { registerAudioHandlers } from '../audio-handlers';
 import { AudioStorageService } from '../../audio';
 import { IPC_CHANNELS } from '@shared/ipc-channels';
 import { toErrorMessage } from '@shared/types';
@@ -36,6 +37,7 @@ describe('IPC Handlers', () => {
     audioService = new AudioStorageService(tempDir);
     registerNoteHandlers(mockIpc, db, audioService);
     registerInstrumentHandlers(mockIpc, db);
+    registerAudioHandlers(mockIpc, audioService);
   });
 
   afterEach(() => {
@@ -50,6 +52,7 @@ describe('IPC Handlers', () => {
     expect(handlers.has(IPC_CHANNELS.NOTES.UPDATE)).toBe(true);
     expect(handlers.has(IPC_CHANNELS.NOTES.DELETE)).toBe(true);
     expect(handlers.has(IPC_CHANNELS.INSTRUMENTS.GET_ALL)).toBe(true);
+    expect(handlers.has(IPC_CHANNELS.AUDIO.SAVE_FILE)).toBe(true);
   });
 
   it('handles notes:create returning success envelope', async () => {
@@ -238,6 +241,34 @@ describe('IPC Handlers', () => {
 
       expect(res.success).toBe(false);
       expect(res.error).toBe('Either file_path or audio_buffer must be provided');
+    });
+
+    it('handles audio:save-file saving WAV payload to disk and returning AudioIngestionResult', async () => {
+      const wavArrayBuffer = createFakeWavArrayBuffer();
+      const saveHandler = handlers.get(IPC_CHANNELS.AUDIO.SAVE_FILE)!;
+
+      const res = (await saveHandler({}, {
+        buffer: wavArrayBuffer,
+        format: 'wav',
+      })) as { success: boolean; data: { relativePath: string; absolutePath: string; format: string; sizeBytes: number } };
+
+      expect(res.success).toBe(true);
+      expect(res.data.relativePath).toMatch(/^recordings\/[a-f0-9-]+\.wav$/);
+      expect(res.data.format).toBe('wav');
+      expect(res.data.sizeBytes).toBe(wavArrayBuffer.byteLength);
+      expect(fs.existsSync(res.data.absolutePath)).toBe(true);
+    });
+
+    it('handles audio:save-file returning error envelope when audio buffer is missing or invalid', async () => {
+      const saveHandler = handlers.get(IPC_CHANNELS.AUDIO.SAVE_FILE)!;
+
+      const resMissing = (await saveHandler({}, {} as unknown)) as { success: boolean; error: string };
+      expect(resMissing.success).toBe(false);
+      expect(resMissing.error).toBe('Missing audio buffer in saveAudioFile payload');
+
+      const resInvalid = (await saveHandler({}, { buffer: new ArrayBuffer(10), format: 'wav' })) as { success: boolean; error: string };
+      expect(resInvalid.success).toBe(false);
+      expect(resInvalid.error).toContain('header validation failed');
     });
   });
 });

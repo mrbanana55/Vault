@@ -8,6 +8,8 @@ import {
   type Instrument,
   type IPCResult,
   type VaultAPI,
+  type AudioFormat,
+  type AudioIngestionResult,
 } from "@shared/types";
 
 export const vaultAPI: VaultAPI = {
@@ -29,6 +31,11 @@ export const vaultAPI: VaultAPI = {
     getAll: (): Promise<IPCResult<Instrument[]>> =>
       ipcRenderer.invoke(IPC_CHANNELS.INSTRUMENTS.GET_ALL),
   },
+  saveAudioFile: (
+    buffer: ArrayBuffer,
+    format: AudioFormat = 'wav'
+  ): Promise<IPCResult<AudioIngestionResult>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.AUDIO.SAVE_FILE, { buffer, format }),
 };
 
 contextBridge.exposeInMainWorld("vaultAPI", vaultAPI);
