@@ -9,11 +9,11 @@
 
 **Purpose**: Establish shared types, format whitelist, and validation utilities that all user stories depend on.
 
-- [ ] T001 Create `AudioFormat` union type, `SUPPORTED_AUDIO_FORMATS` const array, and `isSupportedAudioFormat()` type guard in src/shared/types/audio.ts
-- [ ] T002 Create `AudioIngestionResult` interface with `relativePath`, `absolutePath`, `format`, and `sizeBytes` fields in src/shared/types/audio.ts
-- [ ] T003 Create `AudioValidationError` class extending `Error` with `code` field (`UNSUPPORTED_EXTENSION`, `HEADER_MISMATCH`, `FILE_UNREADABLE`) in src/shared/types/audio.ts
-- [ ] T004 Add `export * from './audio'` re-export to src/shared/types/index.ts
-- [ ] T005 Verify `npx tsc --noEmit` passes with the new types
+- [x] T001 Create `AudioFormat` union type, `SUPPORTED_AUDIO_FORMATS` const array, and `isSupportedAudioFormat()` type guard in src/shared/types/audio.ts
+- [x] T002 Create `AudioIngestionResult` interface with `relativePath`, `absolutePath`, `format`, and `sizeBytes` fields in src/shared/types/audio.ts
+- [x] T003 Create `AudioValidationError` class extending `Error` with `code` field (`UNSUPPORTED_EXTENSION`, `HEADER_MISMATCH`, `FILE_UNREADABLE`) in src/shared/types/audio.ts
+- [x] T004 Add `export * from './audio'` re-export to src/shared/types/index.ts
+- [x] T005 Verify `npx tsc --noEmit` passes with the new types
 
 **Checkpoint**: Shared type foundation is in place. All downstream phases can import from `@shared/types`.
 
@@ -25,12 +25,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T006 Create magic byte signature map for WAV (RIFF+WAVE at offsets 0,8), MP3 (frame sync FF FB/F3/F2 or ID3 tag), M4A (ftyp at offset 4), OGG (OggS at offset 0), and FLAC (fLaC at offset 0) in src/main/audio/validate-audio-header.ts
-- [ ] T007 Implement `validateAudioHeader(header: Buffer, format: AudioFormat): boolean` function using the signature map in src/main/audio/validate-audio-header.ts
-- [ ] T008 Create `AudioStorageService` class with constructor accepting `audioVaultBase: string` and `ensureVaultDirectory()` method using `fs.mkdirSync(path, { recursive: true })` for both `audio_vault/` and `recordings/` subdirectory in src/main/audio/audio-storage-service.ts
-- [ ] T009 Implement `resolveAbsolutePath(relativePath: string): string` with path traversal protection (`path.resolve()` + `startsWith` check against `audioVaultBase + path.sep`) in src/main/audio/audio-storage-service.ts
-- [ ] T010 Create barrel export in src/main/audio/index.ts re-exporting `AudioStorageService`, `validateAudioHeader`
-- [ ] T011 Update src/main/index.ts to instantiate `AudioStorageService` with `path.join(app.getPath('userData'), 'audio_vault')` and call `ensureVaultDirectory()` before `createWindow()` in the `app.whenReady()` handler
+- [x] T006 Create magic byte signature map for WAV (RIFF+WAVE at offsets 0,8), MP3 (frame sync FF FB/F3/F2 or ID3 tag), M4A (ftyp at offset 4), OGG (OggS at offset 0), and FLAC (fLaC at offset 0) in src/main/audio/validate-audio-header.ts
+- [x] T007 Implement `validateAudioHeader(header: Buffer, format: AudioFormat): boolean` function using the signature map in src/main/audio/validate-audio-header.ts
+- [x] T008 Create `AudioStorageService` class with constructor accepting `audioVaultBase: string` and `ensureVaultDirectory()` method using `fs.mkdirSync(path, { recursive: true })` for both `audio_vault/` and `recordings/` subdirectory in src/main/audio/audio-storage-service.ts
+- [x] T009 Implement `resolveAbsolutePath(relativePath: string): string` with path traversal protection (`path.resolve()` + `startsWith` check against `audioVaultBase + path.sep`) in src/main/audio/audio-storage-service.ts
+- [x] T010 Create barrel export in src/main/audio/index.ts re-exporting `AudioStorageService`, `validateAudioHeader`
+- [x] T011 Update src/main/index.ts to instantiate `AudioStorageService` with `path.join(app.getPath('userData'), 'audio_vault')` and call `ensureVaultDirectory()` before `createWindow()` in the `app.whenReady()` handler
 
 **Checkpoint**: Foundation ready — AudioStorageService exists, vault directory is bootstrapped on startup, header validation is available.
 
@@ -44,8 +44,8 @@
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement `writeRecording(buffer: Buffer, format: AudioFormat): AudioIngestionResult` in src/main/audio/audio-storage-service.ts — validate format with `isSupportedAudioFormat()`, validate buffer magic bytes with `validateAudioHeader()`, generate UUID filename with `crypto.randomUUID()`, call `ensureVaultDirectory()`, write file with `fs.writeFileSync()`, return `AudioIngestionResult` with relative path `recordings/{uuid}.{format}`, absolute path, format, and file size
-- [ ] T013 [US1] Verify `npm run build:main` compiles cleanly with the new `writeRecording()` method
+- [x] T012 [US1] Implement `writeRecording(buffer: Buffer, format: AudioFormat): AudioIngestionResult` in src/main/audio/audio-storage-service.ts — validate format with `isSupportedAudioFormat()`, validate buffer magic bytes with `validateAudioHeader()`, generate UUID filename with `crypto.randomUUID()`, call `ensureVaultDirectory()`, write file with `fs.writeFileSync()`, return `AudioIngestionResult` with relative path `recordings/{uuid}.{format}`, absolute path, format, and file size
+- [x] T013 [US1] Verify `npm run build:main` compiles cleanly with the new `writeRecording()` method
 
 **Checkpoint**: User Story 1 is fully functional — buffers can be written to disk with validation and unique naming.
 
@@ -59,8 +59,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Implement `importFile(sourcePath: string): AudioIngestionResult` in src/main/audio/audio-storage-service.ts — extract extension with `path.extname()`, validate with `isSupportedAudioFormat()`, read first 12 bytes with `fs.openSync()`/`fs.readSync()` for header validation via `validateAudioHeader()`, generate UUID filename, call `ensureVaultDirectory()`, copy with `fs.copyFileSync()`, stat for size, return `AudioIngestionResult`
-- [ ] T015 [US2] Verify `npm run build:main` compiles cleanly with the new `importFile()` method
+- [x] T014 [US2] Implement `importFile(sourcePath: string): AudioIngestionResult` in src/main/audio/audio-storage-service.ts — extract extension with `path.extname()`, validate with `isSupportedAudioFormat()`, read first 12 bytes with `fs.openSync()`/`fs.readSync()` for header validation via `validateAudioHeader()`, generate UUID filename, call `ensureVaultDirectory()`, copy with `fs.copyFileSync()`, stat for size, return `AudioIngestionResult`
+- [x] T015 [US2] Verify `npm run build:main` compiles cleanly with the new `importFile()` method
 
 **Checkpoint**: User Story 2 is fully functional — external files can be imported with full validation.
 
@@ -74,8 +74,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Verify `ensureVaultDirectory()` is called in the `AudioStorageService` constructor (already done in T008) AND called again inside `writeRecording()` and `importFile()` before every write (FR-016) in src/main/audio/audio-storage-service.ts
-- [ ] T017 [US3] Verify `ensureVaultDirectory()` in src/main/index.ts is called at startup before `createWindow()` (already done in T011), confirm idempotent behavior when directory already exists
+- [x] T016 [US3] Verify `ensureVaultDirectory()` is called in the `AudioStorageService` constructor (already done in T008) AND called again inside `writeRecording()` and `importFile()` before every write (FR-016) in src/main/audio/audio-storage-service.ts
+- [x] T017 [US3] Verify `ensureVaultDirectory()` in src/main/index.ts is called at startup before `createWindow()` (already done in T011), confirm idempotent behavior when directory already exists
 
 **Checkpoint**: Directory lifecycle is fully guaranteed — startup creation, runtime resilience, and idempotent verification.
 
@@ -89,11 +89,11 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Implement `deleteFile(relativePath: string): { deleted: boolean; missing: boolean }` in src/main/audio/audio-storage-service.ts — resolve path with `resolveAbsolutePath()` (validates containment), attempt `fs.unlinkSync()`, catch `ENOENT` and return `{ deleted: false, missing: true }`, otherwise return `{ deleted: true, missing: false }`
-- [ ] T019 [US4] Update `registerNoteHandlers()` signature in src/main/ipc/note-handlers.ts to accept `AudioStorageService` as third parameter
-- [ ] T020 [US4] Refactor the `notes:delete` IPC handler in src/main/ipc/note-handlers.ts to call `audioService.deleteFile(result.file_path)` instead of raw `fs.promises.unlink(result.file_path)`, removing the direct `fs` import for audio operations
-- [ ] T021 [US4] Update src/main/ipc/index.ts (if barrel exists) and src/main/index.ts to pass the `AudioStorageService` instance to `registerNoteHandlers(ipcMain, db, audioService)`
-- [ ] T022 [US4] Verify `npm run build:main` compiles cleanly after IPC handler refactor
+- [x] T018 [US4] Implement `deleteFile(relativePath: string): { deleted: boolean; missing: boolean }` in src/main/audio/audio-storage-service.ts — resolve path with `resolveAbsolutePath()` (validates containment), attempt `fs.unlinkSync()`, catch `ENOENT` and return `{ deleted: false, missing: true }`, otherwise return `{ deleted: true, missing: false }`
+- [x] T019 [US4] Update `registerNoteHandlers()` signature in src/main/ipc/note-handlers.ts to accept `AudioStorageService` as third parameter
+- [x] T020 [US4] Refactor the `notes:delete` IPC handler in src/main/ipc/note-handlers.ts to call `audioService.deleteFile(result.file_path)` instead of raw `fs.promises.unlink(result.file_path)`, removing the direct `fs` import for audio operations
+- [x] T021 [US4] Update src/main/ipc/index.ts (if barrel exists) and src/main/index.ts to pass the `AudioStorageService` instance to `registerNoteHandlers(ipcMain, db, audioService)`
+- [x] T022 [US4] Verify `npm run build:main` compiles cleanly after IPC handler refactor
 
 **Checkpoint**: Cascading deletion works — database deletions trigger disk cleanup, missing files are handled gracefully.
 
@@ -107,10 +107,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T023 [US5] Verify that `writeRecording()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` when called with a format not in `SUPPORTED_AUDIO_FORMATS` in src/main/audio/audio-storage-service.ts
-- [ ] T024 [US5] Verify that `writeRecording()` throws `AudioValidationError` with code `HEADER_MISMATCH` when buffer magic bytes do not match the claimed format in src/main/audio/audio-storage-service.ts
-- [ ] T025 [US5] Verify that `importFile()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for files with unsupported extensions in src/main/audio/audio-storage-service.ts
-- [ ] T026 [US5] Verify that `importFile()` throws `AudioValidationError` with code `HEADER_MISMATCH` for files with valid extensions but mismatched binary headers in src/main/audio/audio-storage-service.ts
+- [x] T023 [US5] Verify that `writeRecording()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` when called with a format not in `SUPPORTED_AUDIO_FORMATS` in src/main/audio/audio-storage-service.ts
+- [x] T024 [US5] Verify that `writeRecording()` throws `AudioValidationError` with code `HEADER_MISMATCH` when buffer magic bytes do not match the claimed format in src/main/audio/audio-storage-service.ts
+- [x] T025 [US5] Verify that `importFile()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for files with unsupported extensions in src/main/audio/audio-storage-service.ts
+- [x] T026 [US5] Verify that `importFile()` throws `AudioValidationError` with code `HEADER_MISMATCH` for files with valid extensions but mismatched binary headers in src/main/audio/audio-storage-service.ts
 
 **Checkpoint**: All validation paths are confirmed — the system rejects bad data at every entry point.
 
@@ -122,35 +122,35 @@
 
 ### Header Validation Tests
 
-- [ ] T027 [P] Create test file src/main/audio/__tests__/validate-audio-header.test.ts with describe block for `validateAudioHeader()`
-- [ ] T028 [P] Test that `validateAudioHeader()` returns `true` for valid WAV header (RIFF + WAVE bytes) in src/main/audio/__tests__/validate-audio-header.test.ts
-- [ ] T029 [P] Test that `validateAudioHeader()` returns `true` for valid MP3 header (frame sync `FF FB` and ID3 tag `49 44 33`) in src/main/audio/__tests__/validate-audio-header.test.ts
-- [ ] T030 [P] Test that `validateAudioHeader()` returns `true` for valid M4A header (`ftyp` at offset 4) in src/main/audio/__tests__/validate-audio-header.test.ts
-- [ ] T031 [P] Test that `validateAudioHeader()` returns `true` for valid OGG header (`OggS`) in src/main/audio/__tests__/validate-audio-header.test.ts
-- [ ] T032 [P] Test that `validateAudioHeader()` returns `true` for valid FLAC header (`fLaC`) in src/main/audio/__tests__/validate-audio-header.test.ts
-- [ ] T033 [P] Test that `validateAudioHeader()` returns `false` for mismatched format (e.g., WAV header with `mp3` format) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T027 [P] Create test file src/main/audio/__tests__/validate-audio-header.test.ts with describe block for `validateAudioHeader()`
+- [x] T028 [P] Test that `validateAudioHeader()` returns `true` for valid WAV header (RIFF + WAVE bytes) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T029 [P] Test that `validateAudioHeader()` returns `true` for valid MP3 header (frame sync `FF FB` and ID3 tag `49 44 33`) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T030 [P] Test that `validateAudioHeader()` returns `true` for valid M4A header (`ftyp` at offset 4) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T031 [P] Test that `validateAudioHeader()` returns `true` for valid OGG header (`OggS`) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T032 [P] Test that `validateAudioHeader()` returns `true` for valid FLAC header (`fLaC`) in src/main/audio/__tests__/validate-audio-header.test.ts
+- [x] T033 [P] Test that `validateAudioHeader()` returns `false` for mismatched format (e.g., WAV header with `mp3` format) in src/main/audio/__tests__/validate-audio-header.test.ts
 
 ### AudioStorageService Tests
 
-- [ ] T034 Create test file src/main/audio/__tests__/audio-storage-service.test.ts with `beforeEach` creating a temp directory and `afterEach` cleaning it up (matching existing test patterns from Spec 001)
-- [ ] T035 Test that `AudioStorageService` constructor creates `recordings/` subdirectory inside the provided base path in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T036 Test that `ensureVaultDirectory()` recreates the directory if it was deleted after construction in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T037 Test that `ensureVaultDirectory()` is idempotent — calling it twice when directory exists causes no errors in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T038 Test that `writeRecording()` creates a file on disk with content matching the input buffer in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T039 Test that `writeRecording()` returns `relativePath` matching pattern `recordings/{uuid}.wav` in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T040 Test that `writeRecording()` returns correct `sizeBytes` matching the buffer length in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T041 Test that `writeRecording()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for unsupported format in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T042 Test that `writeRecording()` throws `AudioValidationError` with code `HEADER_MISMATCH` when buffer headers don't match claimed format in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T043 Test that `importFile()` copies source file into `recordings/` with UUID filename and original remains untouched in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T044 Test that `importFile()` returns correct `format`, `relativePath`, `absolutePath`, and `sizeBytes` in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T045 Test that `importFile()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for `.aac` file in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T046 Test that `importFile()` throws `AudioValidationError` with code `HEADER_MISMATCH` for `.wav` file with JPEG headers in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T047 Test that `deleteFile()` removes an existing file and returns `{ deleted: true, missing: false }` in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T048 Test that `deleteFile()` returns `{ deleted: false, missing: true }` without throwing when file is already missing in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T049 Test that `resolveAbsolutePath()` throws an error for path traversal attempts (e.g., `../../etc/passwd`) in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T050 Test that `resolveAbsolutePath()` succeeds for valid relative paths like `recordings/valid-uuid.wav` in src/main/audio/__tests__/audio-storage-service.test.ts
-- [ ] T051 Run `npm test` and verify all new tests plus existing 30 Spec 001 tests pass
-- [ ] T052 Run `npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit` and verify zero errors
+- [x] T034 Create test file src/main/audio/__tests__/audio-storage-service.test.ts with `beforeEach` creating a temp directory and `afterEach` cleaning it up (matching existing test patterns from Spec 001)
+- [x] T035 Test that `AudioStorageService` constructor creates `recordings/` subdirectory inside the provided base path in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T036 Test that `ensureVaultDirectory()` recreates the directory if it was deleted after construction in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T037 Test that `ensureVaultDirectory()` is idempotent — calling it twice when directory exists causes no errors in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T038 Test that `writeRecording()` creates a file on disk with content matching the input buffer in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T039 Test that `writeRecording()` returns `relativePath` matching pattern `recordings/{uuid}.wav` in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T040 Test that `writeRecording()` returns correct `sizeBytes` matching the buffer length in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T041 Test that `writeRecording()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for unsupported format in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T042 Test that `writeRecording()` throws `AudioValidationError` with code `HEADER_MISMATCH` when buffer headers don't match claimed format in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T043 Test that `importFile()` copies source file into `recordings/` with UUID filename and original remains untouched in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T044 Test that `importFile()` returns correct `format`, `relativePath`, `absolutePath`, and `sizeBytes` in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T045 Test that `importFile()` throws `AudioValidationError` with code `UNSUPPORTED_EXTENSION` for `.aac` file in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T046 Test that `importFile()` throws `AudioValidationError` with code `HEADER_MISMATCH` for `.wav` file with JPEG headers in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T047 Test that `deleteFile()` removes an existing file and returns `{ deleted: true, missing: false }` in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T048 Test that `deleteFile()` returns `{ deleted: false, missing: true }` without throwing when file is already missing in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T049 Test that `resolveAbsolutePath()` throws an error for path traversal attempts (e.g., `../../etc/passwd`) in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T050 Test that `resolveAbsolutePath()` succeeds for valid relative paths like `recordings/valid-uuid.wav` in src/main/audio/__tests__/audio-storage-service.test.ts
+- [x] T051 Run `npm test` and verify all new tests plus existing 30 Spec 001 tests pass
+- [x] T052 Run `npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit` and verify zero errors
 
 **Checkpoint**: Full test suite passes. All acceptance criteria verified. TypeScript strict compilation clean.
 
@@ -160,10 +160,10 @@
 
 **Purpose**: Final validation, cleanup, and documentation.
 
-- [ ] T053 [P] Verify no raw `fs.unlink` or `fs.writeFile` calls for audio operations remain outside of `AudioStorageService` in src/main/
-- [ ] T054 [P] Verify all code comments and documentation are in English (constitution: Unified Language)
-- [ ] T055 Run `npm run build:main` and verify clean compilation to dist/main/
-- [ ] T056 Run quickstart.md validation scenarios and confirm all 8 pass
+- [x] T053 [P] Verify no raw `fs.unlink` or `fs.writeFile` calls for audio operations remain outside of `AudioStorageService` in src/main/
+- [x] T054 [P] Verify all code comments and documentation are in English (constitution: Unified Language)
+- [x] T055 Run `npm run build:main` and verify clean compilation to dist/main/
+- [x] T056 Run quickstart.md validation scenarios and confirm all 8 pass
 
 ---
 

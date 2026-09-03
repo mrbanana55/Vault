@@ -1,6 +1,5 @@
 import type { IpcMain } from 'electron';
 import type Database from 'better-sqlite3';
-import fs from 'fs';
 import type {
   AudioNote,
   CreateAudioNoteInput,
@@ -16,8 +15,13 @@ import {
   updateNote,
   deleteNote,
 } from '../db/note-repository';
+import type { AudioStorageService } from '../audio';
 
-export function registerNoteHandlers(ipc: IpcMain, db: Database.Database): void {
+export function registerNoteHandlers(
+  ipc: IpcMain,
+  db: Database.Database,
+  audioService: AudioStorageService
+): void {
   ipc.handle(
     'notes:create',
     async (_event, input: CreateAudioNoteInput): Promise<IPCResult<AudioNote>> => {
@@ -80,17 +84,8 @@ export function registerNoteHandlers(ipc: IpcMain, db: Database.Database): void 
         if (!result) {
           return { success: false, error: `Note with id ${id} not found` };
         }
-        let fileMissing = false;
-        try {
-          await fs.promises.unlink(result.file_path);
-        } catch (err: unknown) {
-          if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-            fileMissing = true;
-          } else {
-            throw err;
-          }
-        }
-        return { success: true, data: { file_missing: fileMissing } };
+        const deleteResult = audioService.deleteFile(result.file_path);
+        return { success: true, data: { file_missing: deleteResult.missing } };
       } catch (err: unknown) {
         return { success: false, error: (err as Error).message };
       }

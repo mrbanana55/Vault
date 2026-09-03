@@ -3,6 +3,7 @@ import path from 'path';
 import { getDatabase, closeDatabase } from './db/client';
 import { runMigrations } from './db/migrations';
 import { registerAllHandlers } from './ipc';
+import { AudioStorageService } from './audio';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -26,7 +27,12 @@ app.whenReady().then(() => {
   const dbPath = path.join(app.getPath('userData'), 'vault.db');
   const db = getDatabase(dbPath);
   runMigrations(db);
-  registerAllHandlers(ipcMain, db);
+
+  const audioVaultPath = path.join(app.getPath('userData'), 'audio_vault');
+  const audioStorageService = new AudioStorageService(audioVaultPath);
+  audioStorageService.ensureVaultDirectory();
+
+  registerAllHandlers(ipcMain, db, audioStorageService);
 
   createWindow();
 

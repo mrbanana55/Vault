@@ -6,6 +6,7 @@ import Database from 'better-sqlite3';
 import { runMigrations } from '../../db/migrations';
 import { registerNoteHandlers } from '../note-handlers';
 import { registerInstrumentHandlers } from '../instrument-handlers';
+import { AudioStorageService } from '../../audio';
 import type { IpcMain } from 'electron';
 
 describe('IPC Handlers', () => {
@@ -29,7 +30,8 @@ describe('IPC Handlers', () => {
       }),
     } as unknown as IpcMain;
 
-    registerNoteHandlers(mockIpc, db);
+    const audioService = new AudioStorageService(tempDir);
+    registerNoteHandlers(mockIpc, db, audioService);
     registerInstrumentHandlers(mockIpc, db);
   });
 
