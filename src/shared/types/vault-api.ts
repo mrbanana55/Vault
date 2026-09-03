@@ -1,11 +1,11 @@
 import type {
   CreateAudioNoteInput,
   UpdateAudioNoteInput,
-  NoteFilters,
   AudioNote,
-  Instrument,
-  IPCResult,
-} from '@shared/types';
+} from './audio-note';
+import type { Instrument } from './instrument';
+import type { NoteFilters } from './filters';
+import type { IPCResult } from './ipc';
 
 export interface VaultAPI {
   notes: {

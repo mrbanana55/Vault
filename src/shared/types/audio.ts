@@ -44,3 +44,10 @@ export class AudioValidationError extends Error {
     Object.setPrototypeOf(this, AudioValidationError.prototype);
   }
 }
+
+/** Binary audio payload transmitted across IPC from Renderer to Main. */
+export interface AudioPayload {
+  buffer: ArrayBuffer;
+  format: AudioFormat;
+}
+

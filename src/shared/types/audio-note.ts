@@ -1,3 +1,5 @@
+import type { AudioFormat } from './audio';
+
 /** Represents an audio note as returned from the database. */
 export interface AudioNote {
   id: number;
@@ -17,7 +19,9 @@ export interface AudioNote {
 /** Fields the user can supply when creating a new note. */
 export interface CreateAudioNoteInput {
   title?: string;
-  file_path: string;
+  file_path?: string;
+  audio_buffer?: ArrayBuffer;
+  format?: AudioFormat;
   duration_seconds: number;
   bpm?: number | null;
   musical_key?: string | null;
