@@ -9,7 +9,7 @@ import {
   type NoteFilters,
   type Instrument,
   type IPCResult,
-} from '@shared/types';
+} from '../../shared/types';
 import {
   createNote,
   getNotes,

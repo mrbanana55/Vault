@@ -1,4 +1,4 @@
-import type { AudioFormat } from '@shared/types';
+import type { AudioFormat } from '../../shared/types';
 
 /**
  * Validates whether the given binary buffer begins with the magic byte

@@ -19,6 +19,17 @@ function createWindow(): void {
     },
   });
 
+  const devServerUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
+  if (!app.isPackaged && process.env.NODE_ENV !== 'production') {
+    mainWindow.loadURL(devServerUrl).catch(() => {
+      mainWindow?.loadFile(path.join(__dirname, '../renderer/index.html')).catch(() => {
+        // Dev server and built file not yet present
+      });
+    });
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });

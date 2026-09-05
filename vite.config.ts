@@ -1,19 +1,18 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  root: path.resolve(__dirname, 'src/renderer'),
+  base: './',
   plugins: [react()],
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, 'src/shared'),
     },
   },
-  test: {
-    environmentMatchGlobs: [
-      ['src/renderer/**/*.test.{ts,tsx}', 'jsdom'],
-    ],
-    globals: true,
-    setupFiles: ['./src/renderer/test-setup.ts'],
+  build: {
+    outDir: path.resolve(__dirname, 'dist/renderer'),
+    emptyOutDir: true,
   },
 });

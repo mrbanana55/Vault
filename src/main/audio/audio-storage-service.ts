@@ -7,7 +7,7 @@ import {
   AudioValidationError,
   isSupportedAudioFormat,
   SUPPORTED_AUDIO_FORMATS,
-} from '@shared/types';
+} from '../../shared/types';
 import { validateAudioHeader } from './validate-audio-header';
 
 export class AudioStorageService {

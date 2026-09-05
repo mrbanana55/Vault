@@ -1,5 +1,5 @@
 import type Database from 'better-sqlite3';
-import type { Instrument } from '@shared/types';
+import type { Instrument } from '../../shared/types';
 
 /** [FR-9] List all instruments in the catalog */
 export function getAllInstruments(db: Database.Database): Instrument[] {

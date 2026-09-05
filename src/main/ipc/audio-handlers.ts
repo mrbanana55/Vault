@@ -5,7 +5,7 @@ import {
   type AudioIngestionResult,
   type SaveAudioFileInput,
   type IPCResult,
-} from '@shared/types';
+} from '../../shared/types';
 import type { AudioStorageService } from '../audio';
 
 export function registerAudioHandlers(

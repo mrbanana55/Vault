@@ -287,5 +287,80 @@ Today's afternoon session specified, planned, and implemented **Spec 004: Audio 
 
 ## Next Steps
 
-1. **Spec 005 (Renderer Foundation & React UI):** Build React frontend components, Tailwind CSS styling, core layout (note list, audio player, VU meters, record button, device picker dropdown), and wire up React state to `AudioRecorder` and `window.vaultAPI`.
+1. Completed: Spec 005 (Ideas Table UI & Renderer Foundation).
+
+---
+
+---
+
+# Session Log — 2026-09-04
+
+## Executive Summary
+
+Today's session specified, planned, implemented, and verified **Spec 005: Ideas Table UI**, as well as resolving Electron/Node runtime integration requirements. We bootstrapped the entire Electron Renderer frontend infrastructure with **React 19**, **Tailwind CSS v3** (configured with Apple design system tokens), **Vite 6**, and **Vitest / jsdom**. We delivered the tabbed musical ideas catalog (partitioning active ideas and archived ideas), full metadata display across 9 columns with human-readable duration/date formatting, a per-row used/unused status toggle, persistent light and dark theme toggling, and a reserved bottom recording dock. We also resolved Electron runtime packaging (CJS output, relative shared path resolution, and `better-sqlite3` native ABI compilation for Electron). All 29 tasks across 6 phases were completed with a 100% test pass rate (**111 passing tests across 16 test suites**, up from 92 tests).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Clarification & Planning (SDD)
+- **Spec 005 Authored:** `specs/005-ideas-table-ui/spec.md` covering 3 prioritized user stories (Browse Active Ideas, Browse Archived Ideas, Toggle Light/Dark Theme), 19 functional requirements, and 6 measurable success criteria.
+- **Clarification Session:** Executed `/speckit-clarify` resolving:
+  - Row-level used/unused toggle moves ideas between tabs with immediate reactive update; future row-level actions (inline editing, view/edit mode toggle) noted for subsequent work.
+  - Notes field is displayed as the last column, truncated with an ellipsis (`...`), with a future modal dialog planned for reading full text.
+- **Technical Plan & Artifacts:** Authored `plan.md`, `research.md`, `data-model.md`, `contracts/ui-contracts.md`, `quickstart.md`, and `tasks.md`.
+- **Architectural Refinement:** Explicitly reviewed dependencies against **Stack Simplicity** — excluded redundant `autoprefixer` since Electron targets modern Chromium, and confirmed `jsdom` for headless React testing.
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Configured `package.json` with React 19, Tailwind CSS v3, PostCSS, Vite 6, jsdom, and `@testing-library`. Created `vite.config.ts`, `tailwind.config.cjs`, `postcss.config.cjs`, `tsconfig.renderer.json`, and `src/renderer/test-setup.ts`. | ✅ Done |
+| **Phase 2: Foundational** | Created `src/renderer/index.html` with strict CSP. Implemented Apple design system CSS custom properties in `src/renderer/styles/index.css`. Implemented `src/renderer/lib/format.ts` (`formatDuration`, `formatDate`) with 9 unit tests in `format.test.ts`. Created `RecordingPanel.tsx` placeholder dock. Updated `createWindow()` in `src/main/index.ts` to load renderer URL or built HTML. | ✅ Done |
+| **Phase 3: US1 Active Ideas (MVP)** | Implemented `<EmptyState />` in `src/renderer/components/EmptyState.tsx` with unit tests. Implemented `useNotes(isUsed)` hook in `src/renderer/hooks/useNotes.ts` with parallel instrument enrichment. Implemented `<TableRow />` with 9 metadata columns, instrument pills, and archive toggle. Implemented `<IdeasTable />` coordinating loading, error, and table rendering. | ✅ Done |
+| **Phase 4: US2 Archived Ideas** | Implemented Apple-style segmented `<TabBar />` in `src/renderer/components/TabBar.tsx` with 4 unit tests. Implemented `<AppLayout />` binding tab selection to `IdeasTable`. | ✅ Done |
+| **Phase 5: US3 Light/Dark Theme** | Implemented `ThemeContext` with localStorage persistence in `src/renderer/context/ThemeContext.tsx` with 4 unit tests. Implemented `<ThemeToggle />` with Sun/Moon SVG icons. Implemented `<Header />` with Vault title. Bootstrapped `<App />` and `src/renderer/index.tsx`. | ✅ Done |
+| **Phase 6: Polish & Runtime Hardening** | Resolved Electron build outputs, native C++ module compilation, and script runners. | ✅ Done |
+
+---
+
+### 3. Electron Runtime & Build Integration Fixes
+- **Build Output Structure:** Updated `tsconfig.main.json` to emit compiled files into `dist/main/index.js` and `dist/preload/index.js`, matching `package.json` `"main"`.
+- **ESM vs CJS Resolution:** Configured `build:main` to automatically generate `dist/package.json` with `{"type": "commonjs"}` so Node treats the compiled Electron bundle as CommonJS despite root `package.json` having `"type": "module"`.
+- **Runtime Import Resolution:** Replaced `@shared/types` alias in `src/main/` and `src/preload/` with direct relative paths (`../../shared/types` / `../shared/types`) so Node's native CJS module loader can resolve files at runtime without alias plugins.
+- **Native Addon ABI Alignment:** Recompiled `better-sqlite3` native bindings for Electron 35's internal Node ABI (NODE_MODULE_VERSION 133) using `@electron/rebuild`.
+- **Unified Test Environment:** Updated `npm test` script to run Vitest inside Electron's Node runtime via `ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run`, ensuring tests and desktop app execute against the exact same native ABI without conflicts.
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 111 tests across 16 test suites (`npm test`):
+     - `validate-audio-header.test.ts`: 7 tests
+     - `audio-storage-service.test.ts`: 15 tests
+     - `migrations.test.ts`: 3 tests
+     - `instrument-repository.test.ts`: 4 tests
+     - `note-repository.test.ts`: 16 tests
+     - `ipc-handlers.test.ts`: 15 tests
+     - `preload.test.ts`: 7 tests
+     - `wav-encoder.test.ts`: 4 tests
+     - `audio-recorder.test.ts`: 9 tests
+     - `device-manager.test.ts`: 4 tests
+     - `hot-plug.test.ts`: 3 tests
+     - `meter-service.test.ts`: 5 tests
+     - `format.test.ts`: 9 tests
+     - `EmptyState.test.tsx`: 2 tests
+     - `TabBar.test.tsx`: 4 tests
+     - `ThemeContext.test.tsx`: 4 tests
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit`, `npx tsc -p tsconfig.main.json --noEmit`, and `npx tsc -p tsconfig.renderer.json --noEmit` all pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both main process and Vite renderer bundle cleanly into `dist/`.
+4. **Process Separation & Security Audits:**
+   - Zero `fs`, `path`, or Node.js imports in `src/renderer/`.
+   - Renderer interacts exclusively through `window.vaultAPI`.
 

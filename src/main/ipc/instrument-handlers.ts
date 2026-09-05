@@ -5,7 +5,7 @@ import {
   toErrorMessage,
   type Instrument,
   type IPCResult,
-} from '@shared/types';
+} from '../../shared/types';
 import { getAllInstruments } from '../db/instrument-repository';
 
 export function registerInstrumentHandlers(ipc: IpcMain, db: Database.Database): void {

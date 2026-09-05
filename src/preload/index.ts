@@ -10,7 +10,7 @@ import {
   type VaultAPI,
   type AudioFormat,
   type AudioIngestionResult,
-} from "@shared/types";
+} from "../shared/types";
 
 export const vaultAPI: VaultAPI = {
   notes: {

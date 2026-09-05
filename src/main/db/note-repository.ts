@@ -5,7 +5,7 @@ import type {
   UpdateAudioNoteInput,
   Instrument,
   NoteFilters,
-} from '@shared/types';
+} from '../../shared/types';
 import { getOrCreateInstrument, getInstrumentsByNoteId } from './instrument-repository';
 
 /** Helper to clean optional string fields to null if empty or undefined */
