@@ -435,3 +435,74 @@ Today's session specified, planned, implemented, and verified **Spec 006: Audio 
 4. **Data Integrity & Process Separation:**
    - Original audio files remain 100% untouched; copied into `userData/audio_vault/recordings/`.
    - Zero `fs` or Node.js imports in `src/renderer/`.
+
+---
+
+---
+
+# Session Log — 2026-09-08 (Part 2)
+
+## Executive Summary
+
+Today's afternoon session specified, planned, implemented, and verified **Spec 007: View and Edit Modes**. Following strict **Spec-Driven Development (SDD)** and constitutional principles (Stack Simplicity, Process Separation, Data Integrity, Verifiable Tests, Unified Language), we delivered a dual-mode interaction model for the Ideas Table:
+1. **View Mode (default):** Keeps ideas safe from accidental changes while preserving audio playback, navigation, and archive/restore functionality.
+2. **Edit Mode:** Enables direct inline editing by clicking any editable table cell (Title, BPM, Musical Key, Authors, Song Section, Instruments, Notes). The cell becomes an auto-focused text input pre-filled with the current value. Changes commit on **Escape key**, **Enter**, or **blur (clicking away)**, persisting to SQLite via the existing `window.vaultAPI.notes.update` IPC bridge.
+
+The `Duration`, `Created`, and `Actions` columns remain strictly non-editable. All 27 tasks across 7 phases were completed with 100% automated test coverage (**173 passing tests across 29 test suites**, up from 137 tests across 22 suites).
+
+---
+
+## What Was Completed
+
+### 1. Specification & Planning (SDD)
+- **Spec 007 Authored:** [`specs/007-view-and-edit-modes/spec.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/spec.md) covering 4 prioritized user stories:
+  - **User Story 1 (P1):** Toggle Between View and Edit Modes.
+  - **User Story 2 (P1):** Inline Cell Editing (with Escape/blur commit behavior).
+  - **User Story 3 (P2):** View Mode Interactions Preserved.
+  - **User Story 4 (P2):** Edit Mode Visual Feedback.
+  - 14 functional requirements and 5 measurable success criteria.
+- **Spec Quality Checklist:** Created and verified [`checklists/requirements.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/checklists/requirements.md) with 16/16 checks passing.
+- **Technical Plan & Artifacts:** Authored [`plan.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/plan.md), [`research.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/research.md), [`data-model.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/data-model.md), [`contracts/ui-contracts.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/contracts/ui-contracts.md), [`quickstart.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/quickstart.md), and [`tasks.md`](file:///Users/andresdelgado/Documents/Coding/Vault/specs/007-view-and-edit-modes/tasks.md).
+- **Key Design Decisions:**
+  - **Zero Backend Changes:** Leveraged existing `notes:update` IPC channel and `UpdateAudioNoteInput` which already safely omits duration and file path.
+  - **Escape Key Commit:** User explicitly requested Escape key to commit changes rather than cancel (documented as an intentional design departure).
+  - **Instruments Transformation:** Instruments are edited as comma-separated text inline and transformed into `string[]` to update junction records through SQLite transactions.
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Implemented `src/renderer/types/inline-edit.ts` defining `TableMode`, `EditableField`, `ActiveCellId`, and type guards. Implemented `src/renderer/lib/field-transforms.ts` (`transformFieldValue` and `getNoteFieldDisplayValue`) with per-field validation and sanitization. Added unit test suite `src/renderer/lib/__tests__/field-transforms.test.ts` (10 tests). | ✅ Done |
+| **Phase 2: Foundational** | Implemented `useInlineEdit` hook in `src/renderer/hooks/useInlineEdit.ts` managing single active editing cell state, commit orchestration, error catching, and revert. Implemented `<EditableCell />` in `src/renderer/components/EditableCell.tsx` with auto-focus, text selection, Escape/Enter/blur commit, and mode-aware hover styling. Added unit test suites `useInlineEdit.test.ts` (5 tests) and `EditableCell.test.tsx` (5 tests). | ✅ Done |
+| **Phase 3: US1 Mode Toggle** | Implemented `<ModeToggle />` in `src/renderer/components/ModeToggle.tsx` featuring an Apple HIG-style segmented control (`View` / `Edit`) with `aria-pressed` accessibility. Added `tableMode` state to `<AppLayout />` and placed the toggle in the toolbar adjacent to `<TabBar />`. Added unit tests in `ModeToggle.test.tsx` (3 tests). | ✅ Done |
+| **Phase 4: US2 Inline Editing (MVP)** | Lifted `useNotes` state into `<AppLayout />` to wire `useInlineEdit` save callback with immediate table refetching. Refactored `<IdeasTable />` and `<TableRow />` to pass mode and editing callbacks. Wrapped all 7 editable columns in `<EditableCell />` while retaining Duration, Created, and Archive toggle as non-editable. Added test suites in `TableRow.test.tsx` (6 tests) and `IdeasTable.test.tsx` (4 tests). | ✅ Done |
+| **Phase 5: US3 View Mode Preserved** | Verified click isolation in View mode (no cursor change, no click handlers), confirmed audio playback and archive/restore toggling remain fully operational in both modes. Added integration test suite in `AppLayout.test.tsx` (3 tests). | ✅ Done |
+| **Phase 6: US4 Visual Feedback** | Polished hover affordance styling on editable cells (`cursor-text hover:bg-surface-hover/50`) and active cell highlight (`bg-surface-hover/30 ring-1 ring-accent/50 rounded`). Verified non-editable columns display zero edit cues. | ✅ Done |
+| **Phase 7: Polish & Validation** | Added `data-testid` attributes across new components. Handled mode-switch commit and cell blur ordering edge cases. Validated all 13 quickstart validation scenarios. Ran full test suite and verified clean production build. | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 173 tests across 29 test suites (`npm test`):
+     - `field-transforms.test.ts`: 10 tests (NEW)
+     - `useInlineEdit.test.ts`: 5 tests (NEW)
+     - `EditableCell.test.tsx`: 5 tests (NEW)
+     - `ModeToggle.test.tsx`: 3 tests (NEW)
+     - `TableRow.test.tsx`: 6 tests (NEW)
+     - `IdeasTable.test.tsx`: 4 tests (NEW)
+     - `AppLayout.test.tsx`: 3 tests (NEW)
+     - All 22 existing test suites continue passing with 0 regressions.
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit` and `npx tsc -p tsconfig.main.json --noEmit` pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both Main process (`tsc`) and Vite Renderer bundle cleanly into `dist/`.
+4. **Constitutional Compliance:**
+   - **Process Separation:** Zero Node.js (`fs`, `path`) or database calls in `src/renderer/`. All updates pass through `window.vaultAPI.notes.update()`.
+   - **Stack Simplicity:** Zero new dependencies added.
+   - **Data Integrity:** Audio files and duration values remain immutable during metadata editing.
+   - **Unified Language:** 100% English code, comments, specs, and commit conventions.

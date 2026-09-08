@@ -1,9 +1,18 @@
-import { useNotes } from '../hooks/useNotes';
+import type { NoteWithInstruments } from '../hooks/useNotes';
+import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edit';
 import { TableRow } from './TableRow';
 import { EmptyState } from './EmptyState';
 
-interface IdeasTableProps {
+export interface IdeasTableProps {
   isUsed: 0 | 1;
+  notes: NoteWithInstruments[];
+  loading: boolean;
+  error: string | null;
+  onRefetch: () => void;
+  tableMode: TableMode;
+  activeCellId: ActiveCellId;
+  onCellClick: (noteId: number, field: EditableField) => void;
+  onCellCommit: (noteId: number, field: EditableField, value: string) => void;
 }
 
 const TABLE_COLUMNS = [
@@ -19,9 +28,17 @@ const TABLE_COLUMNS = [
   '',
 ];
 
-export function IdeasTable({ isUsed }: IdeasTableProps) {
-  const { notes, loading, error, refetch } = useNotes(isUsed);
-
+export function IdeasTable({
+  isUsed,
+  notes,
+  loading,
+  error,
+  onRefetch,
+  tableMode,
+  activeCellId,
+  onCellClick,
+  onCellCommit,
+}: IdeasTableProps) {
   if (loading) {
     return (
       <div
@@ -42,7 +59,7 @@ export function IdeasTable({ isUsed }: IdeasTableProps) {
         <p className="font-medium mb-2">Failed to load ideas</p>
         <p className="text-xs text-content-secondary mb-4">{error}</p>
         <button
-          onClick={refetch}
+          onClick={onRefetch}
           className="px-3 py-1 text-xs rounded-md bg-surface-secondary text-content-primary border border-border hover:bg-surface-hover transition-colors"
         >
           Try Again
@@ -73,7 +90,15 @@ export function IdeasTable({ isUsed }: IdeasTableProps) {
         </thead>
         <tbody className="divide-y divide-border/60">
           {notes.map((note) => (
-            <TableRow key={note.id} note={note} onToggle={refetch} />
+            <TableRow
+              key={note.id}
+              note={note}
+              tableMode={tableMode}
+              activeCellId={activeCellId}
+              onCellClick={onCellClick}
+              onCellCommit={onCellCommit}
+              onToggle={onRefetch}
+            />
           ))}
         </tbody>
       </table>

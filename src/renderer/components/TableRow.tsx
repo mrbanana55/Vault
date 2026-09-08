@@ -1,13 +1,27 @@
 import { useState } from 'react';
 import type { NoteWithInstruments } from '../hooks/useNotes';
+import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edit';
 import { formatDuration, formatDate } from '../lib/format';
+import { getNoteFieldDisplayValue } from '../lib/field-transforms';
+import { EditableCell } from './EditableCell';
 
 interface TableRowProps {
   note: NoteWithInstruments;
+  tableMode: TableMode;
+  activeCellId: ActiveCellId;
+  onCellClick: (noteId: number, field: EditableField) => void;
+  onCellCommit: (noteId: number, field: EditableField, value: string) => void;
   onToggle: () => void;
 }
 
-export function TableRow({ note, onToggle }: TableRowProps) {
+export function TableRow({
+  note,
+  tableMode,
+  activeCellId,
+  onCellClick,
+  onCellCommit,
+  onToggle,
+}: TableRowProps) {
   const [isUpdating, setIsUpdating] = useState(false);
 
   async function handleToggle() {
@@ -29,44 +43,104 @@ export function TableRow({ note, onToggle }: TableRowProps) {
     }
   }
 
+  function isEditingField(field: EditableField): boolean {
+    return activeCellId?.noteId === note.id && activeCellId?.field === field;
+  }
+
   return (
     <tr
       data-testid={`note-row-${note.id}`}
       className="border-b border-border last:border-b-0 hover:bg-surface-hover transition-colors text-content-primary"
     >
-      {/* 1. Title */}
-      <td className="px-4 py-3 font-medium max-w-[180px] truncate" title={note.title}>
+      {/* 1. Title (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'title')}
+        isEditing={isEditingField('title')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'title')}
+        onCommit={(val) => onCellCommit(note.id, 'title', val)}
+        className="font-medium max-w-[180px] truncate"
+        title={note.title}
+        data-testid={`cell-title-${note.id}`}
+      >
         {note.title}
-      </td>
+      </EditableCell>
 
-      {/* 2. Duration */}
+      {/* 2. Duration (Non-editable) */}
       <td className="px-4 py-3 text-content-secondary tabular-nums whitespace-nowrap">
         {formatDuration(note.duration_seconds)}
       </td>
 
-      {/* 3. BPM */}
-      <td className="px-4 py-3 text-content-secondary tabular-nums whitespace-nowrap">
+      {/* 3. BPM (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'bpm')}
+        isEditing={isEditingField('bpm')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'bpm')}
+        onCommit={(val) => onCellCommit(note.id, 'bpm', val)}
+        className="text-content-secondary tabular-nums whitespace-nowrap"
+        data-testid={`cell-bpm-${note.id}`}
+      >
         {note.bpm ?? ''}
-      </td>
+      </EditableCell>
 
-      {/* 4. Musical Key */}
-      <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
+      {/* 4. Musical Key (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'musical_key')}
+        isEditing={isEditingField('musical_key')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'musical_key')}
+        onCommit={(val) => onCellCommit(note.id, 'musical_key', val)}
+        className="text-content-secondary whitespace-nowrap"
+        data-testid={`cell-key-${note.id}`}
+      >
         {note.musical_key ?? ''}
-      </td>
+      </EditableCell>
 
-      {/* 5. Authors */}
-      <td className="px-4 py-3 text-content-secondary max-w-[140px] truncate" title={note.authors ?? ''}>
+      {/* 5. Authors (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'authors')}
+        isEditing={isEditingField('authors')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'authors')}
+        onCommit={(val) => onCellCommit(note.id, 'authors', val)}
+        className="text-content-secondary max-w-[140px] truncate"
+        title={note.authors ?? ''}
+        data-testid={`cell-authors-${note.id}`}
+      >
         {note.authors ?? ''}
-      </td>
+      </EditableCell>
 
-      {/* 6. Section */}
-      <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
+      {/* 6. Section (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'song_section')}
+        isEditing={isEditingField('song_section')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'song_section')}
+        onCommit={(val) => onCellCommit(note.id, 'song_section', val)}
+        className="text-content-secondary whitespace-nowrap"
+        data-testid={`cell-section-${note.id}`}
+      >
         {note.song_section ?? ''}
-      </td>
+      </EditableCell>
 
-      {/* 7. Instruments */}
-      <td className="px-4 py-3">
-        <div className="flex flex-wrap gap-1 max-w-[200px]">
+      {/* 7. Instruments (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'instruments')}
+        isEditing={isEditingField('instruments')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'instruments')}
+        onCommit={(val) => onCellCommit(note.id, 'instruments', val)}
+        className="max-w-[200px]"
+        data-testid={`cell-instruments-${note.id}`}
+      >
+        <div className="flex flex-wrap gap-1">
           {note.instruments.map((inst) => (
             <span
               key={inst.id}
@@ -76,22 +150,29 @@ export function TableRow({ note, onToggle }: TableRowProps) {
             </span>
           ))}
         </div>
-      </td>
+      </EditableCell>
 
-      {/* 8. Date Created */}
+      {/* 8. Date Created (Non-editable) */}
       <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
         {formatDate(note.created_at)}
       </td>
 
-      {/* 9. Notes (last column, truncated with ellipsis) */}
-      <td
-        className="px-4 py-3 text-content-secondary max-w-[160px] truncate cursor-default"
+      {/* 9. Notes (Editable) */}
+      <EditableCell
+        value={getNoteFieldDisplayValue(note, 'notes')}
+        isEditing={isEditingField('notes')}
+        isEditable={true}
+        tableMode={tableMode}
+        onClick={() => onCellClick(note.id, 'notes')}
+        onCommit={(val) => onCellCommit(note.id, 'notes', val)}
+        className="text-content-secondary max-w-[160px] truncate"
         title={note.notes ?? ''}
+        data-testid={`cell-notes-${note.id}`}
       >
         {note.notes ?? ''}
-      </td>
+      </EditableCell>
 
-      {/* 10. Action Toggle */}
+      {/* 10. Action Toggle (Non-editable) */}
       <td className="px-4 py-3 text-right">
         <button
           onClick={handleToggle}
