@@ -6,7 +6,7 @@ import type {
 import type { Instrument } from './instrument';
 import type { NoteFilters } from './filters';
 import type { IPCResult } from './ipc';
-import type { AudioFormat, AudioIngestionResult } from './audio';
+import type { AudioFormat, AudioIngestionResult, ImportAudioFileInput } from './audio';
 
 export interface VaultAPI {
   notes: {
@@ -23,6 +23,9 @@ export interface VaultAPI {
     buffer: ArrayBuffer,
     format?: AudioFormat
   ) => Promise<IPCResult<AudioIngestionResult>>;
+  getPathForFile: (file: File) => string;
+  importAudioFile: (input: ImportAudioFileInput) => Promise<IPCResult<AudioNote>>;
+  openFileDialog: () => Promise<IPCResult<string[]>>;
 }
 
 declare global {

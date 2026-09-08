@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { vaultAPI } from '../index';
 import { IPC_CHANNELS } from '@shared/ipc-channels';
 import type { AudioNote, Instrument } from '@shared/types';
@@ -11,6 +11,9 @@ vi.mock('electron', () => {
     },
     ipcRenderer: {
       invoke: vi.fn(),
+    },
+    webUtils: {
+      getPathForFile: vi.fn(),
     },
   };
 });
@@ -94,6 +97,51 @@ describe('Preload Bridge (vaultAPI)', () => {
     expect(res).toEqual({ success: true, data: mockResult });
   });
 
+  it('exposes importAudioFile calling audio:import-file and returning typed IPCResult', async () => {
+    const mockNote: AudioNote = {
+      id: 2,
+      title: 'Imported',
+      file_path: 'recordings/imported.wav',
+      duration_seconds: 15,
+      bpm: null,
+      musical_key: null,
+      authors: null,
+      song_section: null,
+      notes: null,
+      is_used: 0,
+      created_at: '2026-09-08T00:00:00.000Z',
+      updated_at: '2026-09-08T00:00:00.000Z',
+    };
+    (ipcRenderer.invoke as ReturnType<typeof vi.fn>).mockResolvedValue({ success: true, data: mockNote });
+
+    const input = { source_path: '/path/to/imported.wav', duration_seconds: 15 };
+    const res = await vaultAPI.importAudioFile(input);
+
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO.IMPORT_FILE, input);
+    expect(res).toEqual({ success: true, data: mockNote });
+  });
+
+  it('exposes openFileDialog calling audio:open-file-dialog and returning typed IPCResult', async () => {
+    (ipcRenderer.invoke as ReturnType<typeof vi.fn>).mockResolvedValue({
+      success: true,
+      data: ['/path/to/file.wav'],
+    });
+
+    const res = await vaultAPI.openFileDialog();
+    expect(ipcRenderer.invoke).toHaveBeenCalledWith(IPC_CHANNELS.AUDIO.OPEN_FILE_DIALOG);
+    expect(res).toEqual({ success: true, data: ['/path/to/file.wav'] });
+  });
+
+  it('exposes getPathForFile using webUtils.getPathForFile', () => {
+    vi.mocked(webUtils.getPathForFile).mockReturnValue('/Users/audio/track.wav');
+
+    const dummyFile = new File([''], 'track.wav');
+    const path = vaultAPI.getPathForFile(dummyFile);
+
+    expect(webUtils.getPathForFile).toHaveBeenCalledWith(dummyFile);
+    expect(path).toBe('/Users/audio/track.wav');
+  });
+
   describe('Security Boundaries (US4)', () => {
     it('calls contextBridge.exposeInMainWorld for vaultAPI upon loading preload', async () => {
       vi.resetModules();
@@ -102,10 +150,16 @@ describe('Preload Bridge (vaultAPI)', () => {
       expect(electron.contextBridge.exposeInMainWorld).toHaveBeenCalledWith('vaultAPI', preloadModule.vaultAPI);
     });
 
-    it('vaultAPI contains only notes, instruments, and saveAudioFile without exposing ipcRenderer or Node internals', () => {
+    it('vaultAPI contains only permitted methods without exposing ipcRenderer or Node internals', () => {
       const keys = Object.keys(vaultAPI);
-      expect(keys.sort()).toEqual(['instruments', 'notes', 'saveAudioFile']);
-      expect(typeof vaultAPI.saveAudioFile).toBe('function');
+      expect(keys.sort()).toEqual([
+        'getPathForFile',
+        'importAudioFile',
+        'instruments',
+        'notes',
+        'openFileDialog',
+        'saveAudioFile',
+      ]);
 
       expect('ipcRenderer' in vaultAPI).toBe(false);
       expect('require' in vaultAPI).toBe(false);

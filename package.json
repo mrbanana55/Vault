@@ -10,7 +10,7 @@
     "build": "npm run build:main && npm run build:renderer",
     "dev:renderer": "vite",
     "rebuild": "electron-rebuild -f -w better-sqlite3",
-    "start": "electron .",
+    "start": "npm run build:main && electron .",
     "test": "ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run",
     "test:watch": "ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs"
   },

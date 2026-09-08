@@ -15,6 +15,8 @@ export const IPC_CHANNELS = {
   },
   AUDIO: {
     SAVE_FILE: 'audio:save-file',
+    IMPORT_FILE: 'audio:import-file',
+    OPEN_FILE_DIALOG: 'audio:open-file-dialog',
   },
 } as const;
 

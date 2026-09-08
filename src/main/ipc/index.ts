@@ -12,7 +12,7 @@ export function registerAllHandlers(
 ): void {
   registerNoteHandlers(ipc, db, audioService);
   registerInstrumentHandlers(ipc, db);
-  registerAudioHandlers(ipc, audioService);
+  registerAudioHandlers(ipc, audioService, db);
 }
 
 export * from './note-handlers';

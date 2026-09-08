@@ -364,3 +364,74 @@ Today's session specified, planned, implemented, and verified **Spec 005: Ideas 
    - Zero `fs`, `path`, or Node.js imports in `src/renderer/`.
    - Renderer interacts exclusively through `window.vaultAPI`.
 
+---
+
+---
+
+# Session Log — 2026-09-08
+
+## Executive Summary
+
+Today's session specified, planned, implemented, and verified **Spec 006: Audio Ideas Import**. Following strict Spec-Driven Development (SDD) and constitutional principles (Stack Simplicity, Process Separation, Data Integrity, Verifiable Tests, Unified Language), we delivered a complete audio ingestion system supporting both native **drag-and-drop** and **option bar (header)** file selection. The system copies external audio files (`.wav`, `.mp3`, `.m4a`, `.ogg`, `.flac`) into internal storage while strictly leaving original source files untouched, extracts durations using lightweight HTML5 Audio metadata decoding in the Renderer, displays an Apple HIG-styled **circular loading progress indicator** showing numeric percentages (0% to 100%), registers ideas in SQLite with sanitized titles, and immediately refreshes the active ideas table. All 27 tasks across 6 phases were completed with 100% test pass rate (**135 passing tests across 22 test suites**, up from 111 tests).
+
+---
+
+## What Was Completed
+
+### 1. Specification & Planning (SDD)
+- **Spec 006 Authored:** `specs/006-import-audio-ideas/spec.md` covering 3 prioritized user stories (Drag and Drop Audio Import, Import via Option Bar, Visual Progress with Loading Percentage Circle), 15 functional requirements, and 6 measurable success criteria.
+- **Checklist Validation:** Generated and verified `checklists/requirements.md` (16/16 quality criteria passing).
+- **Technical Plan & Artifacts:** Authored `plan.md`, `research.md`, `data-model.md`, `contracts/import-audio-contract.md`, `quickstart.md`, and `tasks.md`.
+- **Architectural Decisions:** 
+  - Zero external dependencies: native HTML5 drag events, SVG progress circle, HTML5 Audio metadata for duration, and Electron's built-in `webUtils.getPathForFile` and `dialog.showOpenDialog`.
+  - Disk-to-disk copy in Main process (`fs.copyFileSync`) avoids serializing multi-megabyte binary Buffers across the IPC boundary for disk files.
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Registered `AUDIO.IMPORT_FILE` and `AUDIO.OPEN_FILE_DIALOG` in `src/shared/ipc-channels.ts`. Defined `ImportAudioFileInput` in `src/shared/types/audio.ts`. Augmented `VaultAPI` interface in `src/shared/types/vault-api.ts`. | ✅ Done |
+| **Phase 2: Foundational** | Implemented `IPC_CHANNELS.AUDIO.IMPORT_FILE` and `IPC_CHANNELS.AUDIO.OPEN_FILE_DIALOG` in `src/main/ipc/audio-handlers.ts`. Updated `registerAudioHandlers` in `src/main/ipc/index.ts`. Exposed `getPathForFile`, `importAudioFile`, and `openFileDialog` in `src/preload/index.ts`. Implemented `extractAudioDuration` in `src/renderer/lib/audio-metadata.ts`. Added integration/unit tests in `import-handlers.test.ts`, `preload.test.ts`, and `audio-metadata.test.ts`. | ✅ Done |
+| **Phase 3: US1 Drag & Drop (MVP)** | Implemented `<DragDropOverlay />` in `src/renderer/components/DragDropOverlay.tsx` with animated dashed border and backdrop blur. Implemented `useAudioImport` hook in `src/renderer/hooks/useAudioImport.ts` managing window drag/drop, format validation, duration extraction, IPC file import dispatch, and table refetching. Integrated into `src/renderer/components/AppLayout.tsx`. Added unit tests in `DragDropOverlay.test.tsx` and `useAudioImport.test.ts`. | ✅ Done |
+| **Phase 4: US2 Option Bar Import** | Updated `<Header />` in `src/renderer/components/Header.tsx` to add "Import" button with upload icon and hidden file input. Connected to `useAudioImport` pipeline in `<AppLayout />`. Added unit tests in `Header.test.tsx`. | ✅ Done |
+| **Phase 5: US3 Circular Progress Modal** | Implemented `<CircularProgressModal />` in `src/renderer/components/CircularProgressModal.tsx` with SVG circle progress ring, centered numeric percentage, batch status, error list, and auto-dismiss. Connected to `batchState` in `useAudioImport` and rendered in `<AppLayout />`. Added unit tests in `CircularProgressModal.test.tsx`. | ✅ Done |
+| **Phase 6: Polish & Verification** | Executed strict type checks across root, Main, and Renderer configs. Ran full test suite (135 passing tests). Verified clean production build. Validated all quickstart scenarios. | ✅ Done |
+
+---
+
+### 3. Runtime Bug Fix & Sandbox Hardening
+- **Incident:** Runtime error `prueba.m4a: Cannot read properties of undefined (reading 'getPathForFile')` encountered when importing files.
+- **Root Cause Discovered:**
+  - `BrowserWindow` runs with `sandbox: true`. In sandboxed Electron renderers, `preload` scripts cannot execute CommonJS `require()` on relative project files (e.g. `require("../shared/types")`).
+  - `src/preload/index.ts` was importing the value `IPC_CHANNELS` from `../shared/types`, causing TypeScript to emit `const types_1 = require("../shared/types");`.
+  - At runtime in the sandboxed renderer, this threw `Error: module not found: ../shared/types`, crashing the preload execution before `contextBridge.exposeInMainWorld("vaultAPI", ...)` could execute. Consequently, `window.vaultAPI` was `undefined`.
+- **Resolution:**
+  1. Inlined `IPC_CHANNELS` directly in `src/preload/index.ts` and restricted all imports from `../shared/types` to type-only imports (`import type { ... }`). This completely eliminates any runtime `require()` calls other than `require('electron')`.
+  2. Hardened `src/renderer/hooks/useAudioImport.ts` with explicit checks for `window.vaultAPI` (providing clear messaging if loaded in a browser), defensive optional chaining for `getPathForFile`, and a fallback path using `saveAudioFile` + `notes.create` if a host file path is unavailable.
+  3. Updated `package.json` `"start"` script to `"npm run build:main && electron ."` to ensure the preload script is always recompiled before Electron launches.
+  4. Added unit tests for the fallback mechanism and missing `vaultAPI` scenario.
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 137 tests across 22 test suites (`npm test`):
+     - `import-handlers.test.ts`: 7 tests
+     - `preload.test.ts`: 10 tests
+     - `audio-metadata.test.ts`: 2 tests
+     - `DragDropOverlay.test.tsx`: 2 tests
+     - `useAudioImport.test.ts`: 6 tests (+2 tests for fallback & missing vaultAPI)
+     - `Header.test.tsx`: 2 tests
+     - `CircularProgressModal.test.tsx`: 4 tests
+     - All 15 existing test suites continue passing with zero regressions.
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit`, `npx tsc -p tsconfig.main.json --noEmit`, and `npx tsc -p tsconfig.renderer.json --noEmit` all pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both Main process and Vite Renderer bundle cleanly into `dist/`.
+4. **Data Integrity & Process Separation:**
+   - Original audio files remain 100% untouched; copied into `userData/audio_vault/recordings/`.
+   - Zero `fs` or Node.js imports in `src/renderer/`.

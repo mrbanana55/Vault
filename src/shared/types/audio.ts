@@ -51,3 +51,16 @@ export interface AudioPayload {
   format: AudioFormat;
 }
 
+/** Payload for importing an existing audio file from the host filesystem into the vault. */
+export interface ImportAudioFileInput {
+  source_path: string;
+  title?: string;
+  duration_seconds: number;
+  bpm?: number | null;
+  musical_key?: string | null;
+  authors?: string | null;
+  song_section?: string | null;
+  notes?: string | null;
+  instrument_names?: string[];
+}
+
