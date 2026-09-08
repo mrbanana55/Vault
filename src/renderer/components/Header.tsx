@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { ThemeToggle } from './ThemeToggle';
+import { AudioTimeBar } from './AudioTimeBar';
 
 export interface HeaderProps {
   onImportFiles?: (files: FileList | File[]) => void;
@@ -24,7 +25,7 @@ export function Header({ onImportFiles }: HeaderProps = {}) {
       data-testid="app-header"
       className="h-13 border-b border-border bg-surface-primary flex items-center justify-between px-6 shrink-0 transition-colors select-none"
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2.5 shrink-0">
         <span className="text-base font-bold tracking-tight text-content-primary">
           Vault
         </span>
@@ -32,7 +33,8 @@ export function Header({ onImportFiles }: HeaderProps = {}) {
           Music Ideas
         </span>
       </div>
-      <div className="flex items-center gap-2">
+      <AudioTimeBar />
+      <div className="flex items-center gap-2 shrink-0">
         <input
           ref={fileInputRef}
           type="file"

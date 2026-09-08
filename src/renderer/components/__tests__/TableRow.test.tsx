@@ -1,7 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { TableRow } from '../TableRow';
 import type { NoteWithInstruments } from '../../hooks/useNotes';
+
+const mockTogglePlay = vi.fn();
+let mockAudioPlayerState = {
+  currentNote: null as NoteWithInstruments | null,
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  play: vi.fn(),
+  pause: vi.fn(),
+  togglePlay: mockTogglePlay,
+  seek: vi.fn(),
+  error: null,
+};
+
+vi.mock('../../hooks/useAudioPlayer', () => ({
+  useAudioPlayer: () => mockAudioPlayerState,
+}));
 
 describe('TableRow', () => {
   const mockNote: NoteWithInstruments = {
@@ -19,6 +36,21 @@ describe('TableRow', () => {
     updated_at: '2026-09-08T12:00:00.000Z',
     instruments: [{ id: 1, name: 'Electric Guitar' }],
   };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockAudioPlayerState = {
+      currentNote: null,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      play: vi.fn(),
+      pause: vi.fn(),
+      togglePlay: mockTogglePlay,
+      seek: vi.fn(),
+      error: null,
+    };
+  });
 
   it('renders all cells correctly in view mode', () => {
     render(
@@ -181,5 +213,55 @@ describe('TableRow', () => {
     fireEvent.blur(input);
 
     expect(onCellCommit).toHaveBeenCalledWith(1, 'bpm', '144');
+  });
+
+  it('renders play button in column 0 and calls togglePlay when clicked', () => {
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            tableMode="view"
+            activeCellId={null}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const playBtn = screen.getByTestId('row-play-button-1');
+    expect(playBtn).toBeInTheDocument();
+    expect(playBtn).toHaveAttribute('aria-label', 'Play Guitar Loop 1');
+
+    fireEvent.click(playBtn);
+    expect(mockTogglePlay).toHaveBeenCalledWith(mockNote);
+  });
+
+  it('renders pause button and active styling when note is currently playing', () => {
+    mockAudioPlayerState.currentNote = mockNote;
+    mockAudioPlayerState.isPlaying = true;
+
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            tableMode="view"
+            activeCellId={null}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const playBtn = screen.getByTestId('row-play-button-1');
+    expect(playBtn).toHaveAttribute('aria-label', 'Pause Guitar Loop 1');
+
+    const row = screen.getByTestId('note-row-1');
+    expect(row.className).toContain('bg-surface-secondary');
   });
 });

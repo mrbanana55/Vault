@@ -114,4 +114,26 @@ describe('IdeasTable', () => {
     expect(screen.getByText('First Idea')).toBeInTheDocument();
     expect(screen.getByText('Second Idea')).toBeInTheDocument();
   });
+
+  it('renders table headers including the leftmost play button column', () => {
+    render(
+      <IdeasTable
+        isUsed={0}
+        notes={mockNotes}
+        loading={false}
+        error={null}
+        onRefetch={vi.fn()}
+        tableMode="view"
+        activeCellId={null}
+        onCellClick={vi.fn()}
+        onCellCommit={vi.fn()}
+      />
+    );
+
+    const headers = screen.getAllByRole('columnheader');
+    expect(headers.length).toBe(11); // 1 play + 9 metadata + 1 action
+    expect(headers[0].textContent).toBe('');
+    expect(headers[1].textContent).toBe('Title');
+    expect(headers[2].textContent).toBe('Duration');
+  });
 });

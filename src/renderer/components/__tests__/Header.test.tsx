@@ -31,4 +31,16 @@ describe('Header', () => {
     fireEvent.change(input, { target: { files: [file] } });
     expect(onImportFiles).toHaveBeenCalled();
   });
+
+  it('renders top-center audio time bar and scrubber', () => {
+    render(
+      <ThemeProvider>
+        <Header />
+      </ThemeProvider>
+    );
+
+    expect(screen.getByTestId('audio-time-bar-container')).toBeInTheDocument();
+    expect(screen.getByTestId('audio-scrubber')).toBeInTheDocument();
+    expect(screen.getByTestId('audio-time-display')).toBeInTheDocument();
+  });
 });

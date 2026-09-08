@@ -16,6 +16,7 @@ export interface IdeasTableProps {
 }
 
 const TABLE_COLUMNS = [
+  '',
   'Title',
   'Duration',
   'BPM',
@@ -81,7 +82,9 @@ export function IdeasTable({
               <th
                 key={index}
                 scope="col"
-                className="px-4 py-2.5 font-semibold text-content-secondary uppercase tracking-wider text-[11px]"
+                className={`px-4 py-2.5 font-semibold text-content-secondary uppercase tracking-wider text-[11px] ${
+                  index === 0 ? 'w-10 px-3 text-center' : ''
+                }`}
               >
                 {col}
               </th>

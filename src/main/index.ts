@@ -1,9 +1,12 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol } from 'electron';
 import path from 'path';
 import { getDatabase, closeDatabase } from './db/client';
 import { runMigrations } from './db/migrations';
 import { registerAllHandlers } from './ipc';
-import { AudioStorageService } from './audio';
+import { AudioStorageService, registerVaultAudioScheme, handleVaultAudioProtocol } from './audio';
+
+// Register vault-audio scheme as privileged before app is ready
+registerVaultAudioScheme(protocol);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -43,6 +46,8 @@ app.whenReady().then(() => {
   const audioVaultPath = path.join(app.getPath('userData'), 'audio_vault');
   const audioStorageService = new AudioStorageService(audioVaultPath);
   audioStorageService.ensureVaultDirectory();
+
+  handleVaultAudioProtocol(protocol, audioStorageService);
 
   registerAllHandlers(ipcMain, db, audioStorageService);
 

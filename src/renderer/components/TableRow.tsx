@@ -4,6 +4,7 @@ import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edi
 import { formatDuration, formatDate } from '../lib/format';
 import { getNoteFieldDisplayValue } from '../lib/field-transforms';
 import { EditableCell } from './EditableCell';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
 interface TableRowProps {
   note: NoteWithInstruments;
@@ -23,6 +24,10 @@ export function TableRow({
   onToggle,
 }: TableRowProps) {
   const [isUpdating, setIsUpdating] = useState(false);
+  const { currentNote, isPlaying, togglePlay } = useAudioPlayer();
+
+  const isCurrentNote = currentNote?.id === note.id;
+  const isPlayingThisNote = isCurrentNote && isPlaying;
 
   async function handleToggle() {
     if (isUpdating) return;
@@ -50,8 +55,30 @@ export function TableRow({
   return (
     <tr
       data-testid={`note-row-${note.id}`}
-      className="border-b border-border last:border-b-0 hover:bg-surface-hover transition-colors text-content-primary"
+      className={`border-b border-border last:border-b-0 transition-colors text-content-primary ${
+        isCurrentNote
+          ? 'bg-surface-secondary/60 hover:bg-surface-secondary/80'
+          : 'hover:bg-surface-hover'
+      }`}
     >
+      {/* 0. Play/Pause Action */}
+      <td className="px-3 py-3 w-10 text-center">
+        <button
+          type="button"
+          onClick={() => togglePlay(note)}
+          data-testid={`row-play-button-${note.id}`}
+          aria-label={isPlayingThisNote ? `Pause ${note.title}` : `Play ${note.title}`}
+          title={isPlayingThisNote ? 'Pause' : 'Play'}
+          className={`p-1.5 rounded-full transition-colors ${
+            isPlayingThisNote
+              ? 'text-accent-blue bg-accent-blue/10 hover:bg-accent-blue/20'
+              : 'text-content-secondary hover:text-content-primary hover:bg-surface-secondary'
+          }`}
+        >
+          {isPlayingThisNote ? <PauseIcon /> : <PlayIcon />}
+        </button>
+      </td>
+
       {/* 1. Title (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'title')}
@@ -206,6 +233,22 @@ function RestoreIcon() {
       stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="1 4 1 10 7 10" />
       <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
     </svg>
   );
 }
