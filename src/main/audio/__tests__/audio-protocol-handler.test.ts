@@ -51,7 +51,7 @@ describe('audio-protocol-handler', () => {
   });
 
   describe('registerVaultAudioScheme', () => {
-    it('registers vault-audio scheme with standard, secure, supportFetchAPI, and stream flags', () => {
+    it('registers vault-audio scheme with standard, secure, supportFetchAPI, stream, and bypassCSP flags', () => {
       const mockProtocol = {
         registerSchemesAsPrivileged: vi.fn(),
       } as unknown as Protocol;
@@ -66,6 +66,7 @@ describe('audio-protocol-handler', () => {
             secure: true,
             supportFetchAPI: true,
             stream: true,
+            bypassCSP: true,
           },
         },
       ]);
@@ -113,7 +114,7 @@ describe('audio-protocol-handler', () => {
       expect(text).toContain('File not found');
     });
 
-    it('delegates to net.fetch with file:// URL when file exists', async () => {
+    it('delegates to net.fetch with file:// URL and sets correct audio/wav MIME header', async () => {
       let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
       const mockProtocol = {
         handle: vi.fn((scheme, handler) => {
@@ -127,7 +128,10 @@ describe('audio-protocol-handler', () => {
       const testFile = path.join(recordingsDir, 'test.wav');
       fs.writeFileSync(testFile, Buffer.from('test audio content'));
 
-      const mockResponse = new Response('audio stream content', { status: 200 });
+      const mockResponse = new Response('audio stream content', {
+        status: 200,
+        headers: { 'Content-Type': 'application/octet-stream' },
+      });
       vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
 
       const request = new Request('vault-audio://stream/recordings/test.wav', {
@@ -135,13 +139,70 @@ describe('audio-protocol-handler', () => {
       });
       const response = await registeredHandler!(request);
 
-      expect(response).toBe(mockResponse);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('audio/wav');
       expect(net.fetch).toHaveBeenCalledWith(
         expect.stringMatching(/^file:\/\//),
         expect.objectContaining({
           headers: request.headers,
         })
       );
+    });
+
+    it('overrides Content-Type with audio/mp4 for .m4a files', async () => {
+      let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
+      const mockProtocol = {
+        handle: vi.fn((scheme, handler) => {
+          registeredHandler = handler;
+        }),
+      } as unknown as Protocol;
+
+      handleVaultAudioProtocol(mockProtocol, service);
+
+      const recordingsDir = path.join(vaultBase, 'recordings');
+      const testFile = path.join(recordingsDir, 'idea.m4a');
+      fs.writeFileSync(testFile, Buffer.from('m4a audio content'));
+
+      const mockResponse = new Response('m4a binary', {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+      vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
+
+      const request = new Request('vault-audio://stream/recordings/idea.m4a');
+      const response = await registeredHandler!(request);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('Content-Type')).toBe('audio/mp4');
+    });
+
+    it('sets audio/mpeg for .mp3 files', async () => {
+      let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
+      const mockProtocol = {
+        handle: vi.fn((scheme, handler) => {
+          registeredHandler = handler;
+        }),
+      } as unknown as Protocol;
+
+      handleVaultAudioProtocol(mockProtocol, service);
+
+      const recordingsDir = path.join(vaultBase, 'recordings');
+      const testFile = path.join(recordingsDir, 'track.mp3');
+      fs.writeFileSync(testFile, Buffer.from('mp3 audio content'));
+
+      const mockResponse = new Response('mp3 binary', {
+        status: 206,
+        statusText: 'Partial Content',
+      });
+      vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
+
+      const request = new Request('vault-audio://stream/recordings/track.mp3', {
+        headers: { Range: 'bytes=10-20' },
+      });
+      const response = await registeredHandler!(request);
+
+      expect(response.status).toBe(206);
+      expect(response.headers.get('Content-Type')).toBe('audio/mpeg');
     });
   });
 });

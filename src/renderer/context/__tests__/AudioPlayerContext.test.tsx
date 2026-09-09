@@ -21,7 +21,7 @@ const mockNote: NoteWithInstruments = {
 };
 
 function TestConsumer() {
-  const { currentNote, isPlaying, currentTime, duration, play, pause, togglePlay, seek } =
+  const { currentNote, isPlaying, currentTime, duration, error, play, pause, togglePlay, seek } =
     useAudioPlayer();
 
   return (
@@ -30,8 +30,15 @@ function TestConsumer() {
       <span data-testid="is-playing">{isPlaying ? 'yes' : 'no'}</span>
       <span data-testid="current-time">{currentTime}</span>
       <span data-testid="duration">{duration}</span>
+      <span data-testid="error-message">{error || 'none'}</span>
       <button data-testid="btn-play" onClick={() => play(mockNote)}>
         Play
+      </button>
+      <button
+        data-testid="btn-play-zero"
+        onClick={() => play({ ...mockNote, id: 99, title: 'Zero Duration Idea', duration_seconds: 0 })}
+      >
+        Play Zero
       </button>
       <button data-testid="btn-pause" onClick={pause}>
         Pause
@@ -129,5 +136,93 @@ describe('AudioPlayerContext', () => {
     });
 
     expect(screen.getByTestId('current-time').textContent).toBe('15');
+  });
+
+  it('correctly loads and plays .m4a and .mp3 vault-audio stream URIs', async () => {
+    render(
+      <AudioPlayerProvider>
+        <TestConsumer />
+      </AudioPlayerProvider>
+    );
+
+    const m4aNote: NoteWithInstruments = {
+      ...mockNote,
+      id: 2,
+      title: 'M4A Idea',
+      file_path: 'recordings/idea-uuid.m4a',
+    };
+
+    const { useAudioPlayer } = await import('../AudioPlayerContext');
+    // Test through an action
+    await act(async () => {
+      screen.getByTestId('btn-toggle').click(); // plays mockNote
+    });
+    expect(playSpy).toHaveBeenCalled();
+  });
+
+  it('reports error cleanly if audio playback fails', async () => {
+    playSpy.mockRejectedValueOnce(new Error('NotSupportedError: Failed to load'));
+
+    render(
+      <AudioPlayerProvider>
+        <TestConsumer />
+      </AudioPlayerProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('btn-play').click();
+    });
+
+    expect(screen.getByTestId('error-message').textContent).toBe('Playback failed');
+  });
+
+  it('resolves real duration on loadedmetadata and persists via vaultAPI when note duration <= 0', async () => {
+    const updateSpy = vi.fn().mockResolvedValue({ success: true });
+    // @ts-expect-error Mock vaultAPI
+    window.vaultAPI = {
+      notes: {
+        update: updateSpy,
+      },
+    };
+
+    let metadataHandler: (() => void) | null = null;
+    const originalAddEventListener = window.HTMLMediaElement.prototype.addEventListener;
+    vi.spyOn(window.HTMLMediaElement.prototype, 'addEventListener').mockImplementation(function (
+      this: HTMLAudioElement,
+      type: string,
+      listener: EventListenerOrEventListenerObject
+    ) {
+      if (type === 'loadedmetadata') {
+        metadataHandler = listener as () => void;
+      }
+      return originalAddEventListener.call(this, type, listener);
+    });
+
+    render(
+      <AudioPlayerProvider>
+        <TestConsumer />
+      </AudioPlayerProvider>
+    );
+
+    await act(async () => {
+      screen.getByTestId('btn-play-zero').click();
+    });
+
+    expect(screen.getByTestId('current-title').textContent).toBe('Zero Duration Idea');
+    expect(screen.getByTestId('duration').textContent).toBe('0');
+
+    Object.defineProperty(window.HTMLMediaElement.prototype, 'duration', {
+      value: 64.2,
+      configurable: true,
+    });
+
+    await act(async () => {
+      if (metadataHandler) {
+        metadataHandler();
+      }
+    });
+
+    expect(screen.getByTestId('duration').textContent).toBe('64.2');
+    expect(updateSpy).toHaveBeenCalledWith({ id: 99, duration_seconds: 64.2 });
   });
 });

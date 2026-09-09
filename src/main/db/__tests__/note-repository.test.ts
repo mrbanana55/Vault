@@ -282,4 +282,23 @@ describe('Note Repository (Create, Read, Update, Delete)', () => {
     const result = deleteNote(db, 9999);
     expect(result).toBeNull();
   });
+
+  it('17. updates duration_seconds successfully when non-negative', () => {
+    const note = createNote(db, {
+      file_path: '/path/duration-fix.m4a',
+      duration_seconds: 0,
+      title: 'Duration Test',
+    });
+
+    expect(note.duration_seconds).toBe(0);
+
+    const updated = updateNote(db, {
+      id: note.id,
+      duration_seconds: 84.5,
+    });
+
+    expect(updated.duration_seconds).toBe(84.5);
+    const fetched = getNoteById(db, note.id);
+    expect(fetched?.duration_seconds).toBe(84.5);
+  });
 });

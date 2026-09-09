@@ -58,6 +58,21 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     const handleLoadedMetadata = () => {
       if (Number.isFinite(audio.duration) && audio.duration > 0) {
         setDuration(audio.duration);
+
+        const current = currentNoteRef.current;
+        if (current && (!current.duration_seconds || current.duration_seconds <= 0)) {
+          const resolvedDuration = audio.duration;
+          current.duration_seconds = resolvedDuration;
+          setCurrentNote({ ...current, duration_seconds: resolvedDuration });
+
+          if (typeof window !== 'undefined' && window.vaultAPI?.notes?.update) {
+            window.vaultAPI.notes
+              .update({ id: current.id, duration_seconds: resolvedDuration })
+              .catch((err) => {
+                console.error('Failed to update note duration in database:', err);
+              });
+          }
+        }
       }
     };
 

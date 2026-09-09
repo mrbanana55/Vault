@@ -1,9 +1,18 @@
 import fs from 'fs';
+import path from 'path';
 import { pathToFileURL } from 'url';
 import { net, type Protocol } from 'electron';
 import type { AudioStorageService } from './audio-storage-service';
 
 export const VAULT_AUDIO_SCHEME = 'vault-audio';
+
+const AUDIO_MIME_TYPES: Record<string, string> = {
+  '.wav': 'audio/wav',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.ogg': 'audio/ogg',
+  '.flac': 'audio/flac',
+};
 
 /**
  * Registers the vault-audio scheme as privileged.
@@ -18,6 +27,7 @@ export function registerVaultAudioScheme(protocol: Protocol): void {
         secure: true,
         supportFetchAPI: true,
         stream: true,
+        bypassCSP: true,
       },
     },
   ]);
@@ -71,9 +81,24 @@ export function handleVaultAudioProtocol(
 
       const fileUrl = pathToFileURL(absolutePath).toString();
       // Forward the original request headers (e.g. Range) to net.fetch
-      return await net.fetch(fileUrl, {
+      const originalResponse = await net.fetch(fileUrl, {
         headers: request.headers,
       });
+
+      const ext = path.extname(absolutePath).toLowerCase();
+      const explicitMime = AUDIO_MIME_TYPES[ext];
+
+      if (explicitMime) {
+        const headers = new Headers(originalResponse.headers);
+        headers.set('Content-Type', explicitMime);
+        return new Response(originalResponse.body, {
+          status: originalResponse.status,
+          statusText: originalResponse.statusText,
+          headers,
+        });
+      }
+
+      return originalResponse;
     } catch (err) {
       console.error('Failed to handle vault-audio request:', err);
       return new Response('Internal Server Error', {

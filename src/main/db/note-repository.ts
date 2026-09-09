@@ -199,6 +199,11 @@ export function updateNote(db: Database.Database, input: UpdateAudioNoteInput): 
       params['is_used'] = input.is_used;
     }
 
+    if (input.duration_seconds !== undefined && input.duration_seconds >= 0) {
+      setClauses.push('duration_seconds = :duration_seconds');
+      params['duration_seconds'] = input.duration_seconds;
+    }
+
     const sql = `UPDATE audio_notes SET ${setClauses.join(', ')} WHERE id = :id`;
     db.prepare(sql).run(params);
 

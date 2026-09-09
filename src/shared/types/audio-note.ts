@@ -34,6 +34,7 @@ export interface CreateAudioNoteInput {
 /** Fields the user can update on an existing note. */
 export interface UpdateAudioNoteInput {
   id: number;
+  duration_seconds?: number;
   title?: string;
   bpm?: number | null;
   musical_key?: string | null;

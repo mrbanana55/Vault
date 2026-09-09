@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
-import { formatDuration } from '../lib/format';
+import React, { useState } from "react";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { formatDuration } from "../lib/format";
 
 export function AudioTimeBar() {
   const { currentNote, currentTime, duration, seek } = useAudioPlayer();
@@ -8,7 +8,8 @@ export function AudioTimeBar() {
   const [dragTime, setDragTime] = useState<number | null>(null);
 
   const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
-  const totalDuration = duration || (currentNote ? currentNote.duration_seconds : 0);
+  const totalDuration =
+    duration || (currentNote ? currentNote.duration_seconds : 0);
   const isDisabled = !currentNote;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,8 +62,8 @@ export function AudioTimeBar() {
         aria-label="Audio playback scrubber"
         className={`flex-1 h-1.5 rounded-lg appearance-none cursor-pointer transition-opacity ${
           isDisabled
-            ? 'opacity-40 cursor-not-allowed bg-surface-secondary'
-            : 'bg-border/60 hover:bg-border accent-accent-blue'
+            ? "opacity-40 cursor-not-allowed bg-surface-secondary"
+            : "bg-border/60 bg-border accent-accent-blue"
         }`}
       />
       <span

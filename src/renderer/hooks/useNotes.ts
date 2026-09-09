@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { AudioNote, Instrument } from '@shared/types';
+import { resolveAudioUrlDuration } from '../lib/audio-metadata';
 
 export interface NoteWithInstruments extends AudioNote {
   instruments: Instrument[];
@@ -50,6 +51,36 @@ export function useNotes(isUsed: 0 | 1): UseNotesResult {
         if (cancelled) return;
         setNotes(enriched);
         setLoading(false);
+
+        // Retroactively resolve true duration for any notes stored with duration_seconds <= 0
+        const notesNeedingDuration = enriched.filter(
+          (n) => !n.duration_seconds || n.duration_seconds <= 0
+        );
+
+        if (notesNeedingDuration.length > 0) {
+          for (const note of notesNeedingDuration) {
+            try {
+              const streamUrl = `vault-audio://stream/${note.file_path}`;
+              const realDuration = await resolveAudioUrlDuration(streamUrl);
+              if (cancelled) break;
+
+              if (realDuration > 0) {
+                setNotes((prevNotes) =>
+                  prevNotes.map((n) =>
+                    n.id === note.id ? { ...n, duration_seconds: realDuration } : n
+                  )
+                );
+
+                await window.vaultAPI.notes.update({
+                  id: note.id,
+                  duration_seconds: realDuration,
+                });
+              }
+            } catch (resolveErr) {
+              console.error(`Failed to resolve duration for note ${note.id}:`, resolveErr);
+            }
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
