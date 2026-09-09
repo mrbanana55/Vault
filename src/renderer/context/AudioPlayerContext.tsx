@@ -171,7 +171,14 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     (timeSeconds: number) => {
       const audio = audioRef.current;
       if (!audio) return;
-      const targetTime = Math.max(0, Math.min(timeSeconds, duration || audio.duration || 0));
+      const noteDuration = currentNoteRef.current?.duration_seconds ?? 0;
+      const audioDuration =
+        Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : 0;
+      const maxDuration = duration || audioDuration || noteDuration;
+      const targetTime =
+        maxDuration > 0
+          ? Math.max(0, Math.min(timeSeconds, maxDuration))
+          : Math.max(0, timeSeconds);
       audio.currentTime = targetTime;
       setCurrentTime(targetTime);
     },

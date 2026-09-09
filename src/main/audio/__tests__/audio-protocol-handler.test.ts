@@ -114,7 +114,7 @@ describe('audio-protocol-handler', () => {
       expect(text).toContain('File not found');
     });
 
-    it('delegates to net.fetch with file:// URL and sets correct audio/wav MIME header', async () => {
+    it('streams full audio with status 200, Accept-Ranges, and correct audio/wav MIME header when no Range is requested', async () => {
       let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
       const mockProtocol = {
         handle: vi.fn((scheme, handler) => {
@@ -126,30 +126,50 @@ describe('audio-protocol-handler', () => {
 
       const recordingsDir = path.join(vaultBase, 'recordings');
       const testFile = path.join(recordingsDir, 'test.wav');
-      fs.writeFileSync(testFile, Buffer.from('test audio content'));
+      fs.writeFileSync(testFile, Buffer.from('test audio content 1234567890'));
 
-      const mockResponse = new Response('audio stream content', {
-        status: 200,
-        headers: { 'Content-Type': 'application/octet-stream' },
-      });
-      vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
-
-      const request = new Request('vault-audio://stream/recordings/test.wav', {
-        headers: { Range: 'bytes=0-10' },
-      });
+      const request = new Request('vault-audio://stream/recordings/test.wav');
       const response = await registeredHandler!(request);
 
       expect(response.status).toBe(200);
       expect(response.headers.get('Content-Type')).toBe('audio/wav');
-      expect(net.fetch).toHaveBeenCalledWith(
-        expect.stringMatching(/^file:\/\//),
-        expect.objectContaining({
-          headers: request.headers,
-        })
-      );
+      expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+      expect(response.headers.get('Content-Length')).toBe(String(Buffer.from('test audio content 1234567890').length));
+      const text = await response.text();
+      expect(text).toBe('test audio content 1234567890');
     });
 
-    it('overrides Content-Type with audio/mp4 for .m4a files', async () => {
+    it('returns 206 Partial Content with Content-Range for HTTP Range requests on .wav files', async () => {
+      let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
+      const mockProtocol = {
+        handle: vi.fn((scheme, handler) => {
+          registeredHandler = handler;
+        }),
+      } as unknown as Protocol;
+
+      handleVaultAudioProtocol(mockProtocol, service);
+
+      const recordingsDir = path.join(vaultBase, 'recordings');
+      const testFile = path.join(recordingsDir, 'test.wav');
+      const content = '0123456789abcdefghijklmnopqrstuvwxyz';
+      fs.writeFileSync(testFile, Buffer.from(content));
+
+      const request = new Request('vault-audio://stream/recordings/test.wav', {
+        headers: { Range: 'bytes=10-19' },
+      });
+      const response = await registeredHandler!(request);
+
+      expect(response.status).toBe(206);
+      expect(response.statusText).toBe('Partial Content');
+      expect(response.headers.get('Content-Type')).toBe('audio/wav');
+      expect(response.headers.get('Accept-Ranges')).toBe('bytes');
+      expect(response.headers.get('Content-Range')).toBe(`bytes 10-19/${content.length}`);
+      expect(response.headers.get('Content-Length')).toBe('10');
+      const text = await response.text();
+      expect(text).toBe('abcdefghij');
+    });
+
+    it('overrides Content-Type with audio/mp4 for .m4a files and supports seeking to end of file', async () => {
       let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
       const mockProtocol = {
         handle: vi.fn((scheme, handler) => {
@@ -161,22 +181,22 @@ describe('audio-protocol-handler', () => {
 
       const recordingsDir = path.join(vaultBase, 'recordings');
       const testFile = path.join(recordingsDir, 'idea.m4a');
-      fs.writeFileSync(testFile, Buffer.from('m4a audio content'));
+      const content = 'm4a-audio-data-test-string-here';
+      fs.writeFileSync(testFile, Buffer.from(content));
 
-      const mockResponse = new Response('m4a binary', {
-        status: 200,
-        headers: { 'Content-Type': 'text/plain' },
+      const request = new Request('vault-audio://stream/recordings/idea.m4a', {
+        headers: { Range: 'bytes=10-' },
       });
-      vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
-
-      const request = new Request('vault-audio://stream/recordings/idea.m4a');
       const response = await registeredHandler!(request);
 
-      expect(response.status).toBe(200);
+      expect(response.status).toBe(206);
       expect(response.headers.get('Content-Type')).toBe('audio/mp4');
+      expect(response.headers.get('Content-Range')).toBe(`bytes 10-${content.length - 1}/${content.length}`);
+      const text = await response.text();
+      expect(text).toBe(content.slice(10));
     });
 
-    it('sets audio/mpeg for .mp3 files', async () => {
+    it('sets audio/mpeg for .mp3 files and handles Range requests', async () => {
       let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
       const mockProtocol = {
         handle: vi.fn((scheme, handler) => {
@@ -188,21 +208,42 @@ describe('audio-protocol-handler', () => {
 
       const recordingsDir = path.join(vaultBase, 'recordings');
       const testFile = path.join(recordingsDir, 'track.mp3');
-      fs.writeFileSync(testFile, Buffer.from('mp3 audio content'));
-
-      const mockResponse = new Response('mp3 binary', {
-        status: 206,
-        statusText: 'Partial Content',
-      });
-      vi.mocked(net.fetch).mockResolvedValueOnce(mockResponse);
+      const content = 'mp3-binary-payload-test-example';
+      fs.writeFileSync(testFile, Buffer.from(content));
 
       const request = new Request('vault-audio://stream/recordings/track.mp3', {
-        headers: { Range: 'bytes=10-20' },
+        headers: { Range: 'bytes=4-9' },
       });
       const response = await registeredHandler!(request);
 
       expect(response.status).toBe(206);
       expect(response.headers.get('Content-Type')).toBe('audio/mpeg');
+      expect(response.headers.get('Content-Range')).toBe(`bytes 4-9/${content.length}`);
+      const text = await response.text();
+      expect(text).toBe('binary');
+    });
+
+    it('returns 416 Range Not Satisfiable for out of range requests', async () => {
+      let registeredHandler: ((request: Request) => Promise<Response>) | null = null;
+      const mockProtocol = {
+        handle: vi.fn((scheme, handler) => {
+          registeredHandler = handler;
+        }),
+      } as unknown as Protocol;
+
+      handleVaultAudioProtocol(mockProtocol, service);
+
+      const recordingsDir = path.join(vaultBase, 'recordings');
+      const testFile = path.join(recordingsDir, 'track.wav');
+      fs.writeFileSync(testFile, Buffer.from('short'));
+
+      const request = new Request('vault-audio://stream/recordings/track.wav', {
+        headers: { Range: 'bytes=100-200' },
+      });
+      const response = await registeredHandler!(request);
+
+      expect(response.status).toBe(416);
+      expect(response.headers.get('Content-Range')).toBe('bytes */5');
     });
   });
 });

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { formatDuration } from "../lib/format";
 
@@ -7,33 +7,81 @@ export function AudioTimeBar() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragTime, setDragTime] = useState<number | null>(null);
 
-  const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
+  const isDraggingRef = useRef(false);
+  const dragTimeRef = useRef<number | null>(null);
+
   const totalDuration =
     duration || (currentNote ? currentNote.duration_seconds : 0);
   const isDisabled = !currentNote;
 
+  const displayTime = isDragging && dragTime !== null ? dragTime : currentTime;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    if (isDragging) {
+    if (Number.isNaN(val)) return;
+
+    if (isDraggingRef.current) {
+      dragTimeRef.current = val;
       setDragTime(val);
     } else {
       seek(val);
     }
   };
 
-  const handleMouseDown = () => {
+  const handleDragStart = (e: React.SyntheticEvent<HTMLInputElement>) => {
     if (isDisabled) return;
+    isDraggingRef.current = true;
     setIsDragging(true);
-    setDragTime(currentTime);
-  };
 
-  const handleMouseUp = () => {
-    if (isDragging && dragTime !== null) {
-      seek(dragTime);
-      setIsDragging(false);
-      setDragTime(null);
+    const val = parseFloat(e.currentTarget.value);
+    if (!Number.isNaN(val)) {
+      dragTimeRef.current = val;
+      setDragTime(val);
     }
   };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLInputElement>) => {
+    handleDragStart(e);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // In testing environments or unsupported browsers, safely ignore
+    }
+  };
+
+  const handleDragEnd = useCallback(() => {
+    if (isDraggingRef.current) {
+      const finalTime = dragTimeRef.current;
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      setDragTime(null);
+
+      if (finalTime !== null && Number.isFinite(finalTime)) {
+        seek(finalTime);
+      }
+    }
+  }, [seek]);
+
+  // Global window listeners while dragging to ensure releasing mouse/touch anywhere commits the seek
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const onGlobalUp = () => {
+      handleDragEnd();
+    };
+
+    window.addEventListener("pointerup", onGlobalUp);
+    window.addEventListener("pointercancel", onGlobalUp);
+    window.addEventListener("mouseup", onGlobalUp);
+    window.addEventListener("touchend", onGlobalUp);
+
+    return () => {
+      window.removeEventListener("pointerup", onGlobalUp);
+      window.removeEventListener("pointercancel", onGlobalUp);
+      window.removeEventListener("mouseup", onGlobalUp);
+      window.removeEventListener("touchend", onGlobalUp);
+    };
+  }, [isDragging, handleDragEnd]);
 
   return (
     <div
@@ -48,22 +96,19 @@ export function AudioTimeBar() {
         value={displayTime}
         disabled={isDisabled}
         onChange={handleChange}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onTouchStart={handleMouseDown}
-        onTouchEnd={() => {
-          if (isDragging && dragTime !== null) {
-            seek(dragTime);
-            setIsDragging(false);
-            setDragTime(null);
-          }
-        }}
+        onPointerDown={handlePointerDown}
+        onPointerUp={handleDragEnd}
+        onPointerCancel={handleDragEnd}
+        onMouseDown={handleDragStart}
+        onMouseUp={handleDragEnd}
+        onTouchStart={handleDragStart}
+        onTouchEnd={handleDragEnd}
         data-testid="audio-scrubber"
         aria-label="Audio playback scrubber"
-        className={`flex-1 h-1.5 rounded-lg appearance-none cursor-pointer transition-opacity ${
+        className={`flex-1 h-1.5 rounded-lg appearance-none cursor-pointer transition-opacity accent-accent ${
           isDisabled
-            ? "opacity-40 cursor-not-allowed bg-surface-secondary"
-            : "bg-border/60 bg-border accent-accent-blue"
+            ? "opacity-40 cursor-not-allowed bg-surface-secondary [&::-webkit-slider-thumb]:cursor-not-allowed"
+            : "bg-border [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-sm hover:[&::-webkit-slider-thumb]:scale-110 active:[&::-webkit-slider-thumb]:scale-125 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:w-3.5 [&::-moz-range-thumb]:h-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-sm"
         }`}
       />
       <span

@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { pathToFileURL } from 'url';
-import { net, type Protocol } from 'electron';
+import { Readable } from 'stream';
+import { type Protocol } from 'electron';
 import type { AudioStorageService } from './audio-storage-service';
 
 export const VAULT_AUDIO_SCHEME = 'vault-audio';
@@ -50,8 +50,78 @@ export function parseVaultAudioUrl(rawUrl: string): string {
 }
 
 /**
+ * Serves an audio file from the filesystem with full HTTP Range request support (status 206),
+ * enabling seeking/scrubbing in HTML5 media elements.
+ */
+export function serveAudioFile(absolutePath: string, rangeHeader?: string | null): Response {
+  const stat = fs.statSync(absolutePath);
+  const fileSize = stat.size;
+  const ext = path.extname(absolutePath).toLowerCase();
+  const mimeType = AUDIO_MIME_TYPES[ext] || 'application/octet-stream';
+
+  if (rangeHeader) {
+    const match = rangeHeader.match(/bytes=(\d*)-(\d*)/);
+    if (match) {
+      let start: number;
+      let end: number;
+
+      if (!match[1] && match[2]) {
+        const suffixLength = parseInt(match[2], 10);
+        start = Math.max(0, fileSize - suffixLength);
+        end = fileSize - 1;
+      } else {
+        start = match[1] ? parseInt(match[1], 10) : 0;
+        end = match[2] ? parseInt(match[2], 10) : fileSize - 1;
+      }
+
+      if (end >= fileSize) {
+        end = fileSize - 1;
+      }
+
+      if (start < fileSize && start <= end) {
+        const chunkSize = end - start + 1;
+        const nodeStream = fs.createReadStream(absolutePath, { start, end });
+        const webStream = Readable.toWeb(nodeStream);
+
+        return new Response(webStream as unknown as BodyInit, {
+          status: 206,
+          statusText: 'Partial Content',
+          headers: {
+            'Content-Type': mimeType,
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': String(chunkSize),
+          },
+        });
+      }
+
+      return new Response('Requested Range Not Satisfiable', {
+        status: 416,
+        statusText: 'Range Not Satisfiable',
+        headers: {
+          'Content-Range': `bytes */${fileSize}`,
+        },
+      });
+    }
+  }
+
+  const nodeStream = fs.createReadStream(absolutePath);
+  const webStream = Readable.toWeb(nodeStream);
+
+  return new Response(webStream as unknown as BodyInit, {
+    status: 200,
+    statusText: 'OK',
+    headers: {
+      'Content-Type': mimeType,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(fileSize),
+    },
+  });
+}
+
+/**
  * Attaches the vault-audio protocol handler using protocol.handle.
- * Delegates streaming and HTTP Range request handling to net.fetch.
+ * Delegates streaming and HTTP Range request handling to serveAudioFile.
  * MUST be called after app.whenReady().
  */
 export function handleVaultAudioProtocol(
@@ -79,26 +149,8 @@ export function handleVaultAudioProtocol(
         });
       }
 
-      const fileUrl = pathToFileURL(absolutePath).toString();
-      // Forward the original request headers (e.g. Range) to net.fetch
-      const originalResponse = await net.fetch(fileUrl, {
-        headers: request.headers,
-      });
-
-      const ext = path.extname(absolutePath).toLowerCase();
-      const explicitMime = AUDIO_MIME_TYPES[ext];
-
-      if (explicitMime) {
-        const headers = new Headers(originalResponse.headers);
-        headers.set('Content-Type', explicitMime);
-        return new Response(originalResponse.body, {
-          status: originalResponse.status,
-          statusText: originalResponse.statusText,
-          headers,
-        });
-      }
-
-      return originalResponse;
+      const rangeHeader = request.headers.get('Range') || request.headers.get('range');
+      return serveAudioFile(absolutePath, rangeHeader);
     } catch (err) {
       console.error('Failed to handle vault-audio request:', err);
       return new Response('Internal Server Error', {
