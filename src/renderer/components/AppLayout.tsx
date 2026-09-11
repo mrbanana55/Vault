@@ -4,6 +4,8 @@ import type { TableMode, EditableField } from '../types/inline-edit';
 import { Header } from './Header';
 import { TabBar } from './TabBar';
 import { ModeToggle } from './ModeToggle';
+import { DeleteButton } from './DeleteButton';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { IdeasTable } from './IdeasTable';
 import { RecordingPanel } from './RecordingPanel';
 import { DragDropOverlay } from './DragDropOverlay';
@@ -12,16 +14,21 @@ import { useNotes } from '../hooks/useNotes';
 import { useInlineEdit } from '../hooks/useInlineEdit';
 import { useAudioImport } from '../hooks/useAudioImport';
 import { useRowSelection } from '../hooks/useRowSelection';
+import { useAudioPlayer } from '../hooks/useAudioPlayer';
 import { transformFieldValue } from '../lib/field-transforms';
 
 export function AppLayout() {
   const [activeTab, setActiveTab] = useState<0 | 1>(0);
   const [tableMode, setTableMode] = useState<TableMode>('view');
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { notes, loading, error, refetch } = useNotes(activeTab);
+  const { currentNote, pause } = useAudioPlayer();
 
   const {
     selectedIds,
+    selectedCount,
     handleRowSelect,
     selectAll,
     clearSelection,
@@ -89,12 +96,43 @@ export function AppLayout() {
       onImportComplete: handleImportComplete,
     });
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (selectedCount === 0 || isDeleting) return;
+    setIsDeleting(true);
+
+    try {
+      // If currently playing note is in the deletion set, stop playback
+      if (currentNote && selectedIds.has(currentNote.id)) {
+        pause();
+      }
+
+      const idsToDelete = Array.from(selectedIds);
+      for (const id of idsToDelete) {
+        await window.vaultAPI.notes.delete(id);
+      }
+
+      clearSelection();
+      refetch();
+      setIsConfirmOpen(false);
+    } catch (err) {
+      console.error('Error deleting notes:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedCount, isDeleting, currentNote, selectedIds, pause, clearSelection, refetch]);
+
   return (
     <div className="flex flex-col h-screen bg-surface-secondary text-content-primary overflow-hidden transition-colors">
       <Header onImportFiles={importFiles} />
       <main className="flex-1 flex flex-col min-h-0 px-6 pt-5 pb-3">
         <div className="flex items-center justify-between mb-3 shrink-0">
-          <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+          <div className="flex items-center gap-2">
+            <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
+            <DeleteButton
+              selectedCount={selectedCount}
+              onClick={() => setIsConfirmOpen(true)}
+            />
+          </div>
           <ModeToggle tableMode={tableMode} onModeChange={handleModeChange} />
         </div>
         <div className="flex-1 min-h-0 rounded-xl bg-surface-primary border border-border overflow-hidden shadow-xs flex flex-col">
@@ -128,6 +166,15 @@ export function AppLayout() {
         isComplete={batchState.isComplete}
         errors={batchState.errors}
         onDismiss={dismissProgress}
+      />
+      <DeleteConfirmationModal
+        isOpen={isConfirmOpen}
+        count={selectedCount}
+        isDeleting={isDeleting}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          if (!isDeleting) setIsConfirmOpen(false);
+        }}
       />
     </div>
   );

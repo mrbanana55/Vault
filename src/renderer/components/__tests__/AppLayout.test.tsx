@@ -3,6 +3,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AppLayout } from '../AppLayout';
 import { ThemeProvider } from '../../context/ThemeContext';
 
+const mockPause = vi.fn();
+let mockAudioPlayerState = {
+  currentNote: null as any,
+  isPlaying: false,
+  currentTime: 0,
+  duration: 0,
+  play: vi.fn(),
+  pause: mockPause,
+  togglePlay: vi.fn(),
+  seek: vi.fn(),
+  error: null,
+};
+
+vi.mock('../../hooks/useAudioPlayer', () => ({
+  useAudioPlayer: () => mockAudioPlayerState,
+}));
+
 describe('AppLayout', () => {
   const mockNote = {
     id: 1,
@@ -38,6 +55,17 @@ describe('AppLayout', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAudioPlayerState = {
+      currentNote: null,
+      isPlaying: false,
+      currentTime: 0,
+      duration: 0,
+      play: vi.fn(),
+      pause: mockPause,
+      togglePlay: vi.fn(),
+      seek: vi.fn(),
+      error: null,
+    };
 
     window.vaultAPI = {
       notes: {
@@ -56,7 +84,10 @@ describe('AppLayout', () => {
           success: true,
           data: mockNote,
         }),
-        delete: vi.fn(),
+        delete: vi.fn().mockResolvedValue({
+          success: true,
+          data: { file_missing: false },
+        }),
       },
       instruments: {
         getAll: vi.fn().mockResolvedValue({
@@ -183,5 +214,46 @@ describe('AppLayout', () => {
     // Verify previous selection was reset upon leaving the tab
     const restoredCheckbox = screen.getByTestId('row-checkbox-1');
     expect(restoredCheckbox).not.toBeChecked();
+  });
+
+  it('triggers delete confirmation modal and executes deletion via vaultAPI', async () => {
+    mockAudioPlayerState.currentNote = mockNote;
+
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    const deleteBtn = screen.getByTestId('delete-button');
+    expect(deleteBtn).toBeDisabled();
+
+    // Select idea 1
+    fireEvent.click(screen.getByTestId('row-checkbox-1'));
+    expect(deleteBtn).not.toBeDisabled();
+    expect(screen.getByTestId('delete-count-badge')).toHaveTextContent('1');
+
+    // Click delete button -> modal opens
+    fireEvent.click(deleteBtn);
+    expect(screen.getByTestId('delete-confirmation-modal')).toBeInTheDocument();
+
+    // Click Cancel -> modal closes, no delete called
+    fireEvent.click(screen.getByTestId('delete-cancel-button'));
+    expect(screen.queryByTestId('delete-confirmation-modal')).not.toBeInTheDocument();
+    expect(window.vaultAPI.notes.delete).not.toHaveBeenCalled();
+
+    // Reopen modal and click Accept
+    fireEvent.click(deleteBtn);
+    fireEvent.click(screen.getByTestId('delete-accept-button'));
+
+    await waitFor(() => {
+      expect(mockPause).toHaveBeenCalledTimes(1);
+      expect(window.vaultAPI.notes.delete).toHaveBeenCalledWith(1);
+      expect(screen.queryByTestId('delete-confirmation-modal')).not.toBeInTheDocument();
+    });
   });
 });
