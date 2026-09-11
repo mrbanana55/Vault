@@ -13,10 +13,15 @@ export interface IdeasTableProps {
   activeCellId: ActiveCellId;
   onCellClick: (noteId: number, field: EditableField) => void;
   onCellCommit: (noteId: number, field: EditableField, value: string) => void;
+  selectedIds?: Set<number>;
+  onRowSelect?: (noteId: number, index: number, shiftKey: boolean) => void;
+  onSelectAll?: () => void;
+  onClearSelection?: () => void;
 }
 
 const TABLE_COLUMNS = [
-  '',
+  '', // 0. Checkbox
+  '', // 1. Play/Pause
   'Title',
   'Duration',
   'BPM',
@@ -26,7 +31,7 @@ const TABLE_COLUMNS = [
   'Instruments',
   'Created',
   'Notes',
-  '',
+  '', // Action
 ];
 
 export function IdeasTable({
@@ -39,6 +44,8 @@ export function IdeasTable({
   activeCellId,
   onCellClick,
   onCellCommit,
+  selectedIds,
+  onRowSelect,
 }: IdeasTableProps) {
   if (loading) {
     return (
@@ -83,7 +90,7 @@ export function IdeasTable({
                 key={index}
                 scope="col"
                 className={`px-4 py-2.5 font-semibold text-content-secondary uppercase tracking-wider text-[11px] ${
-                  index === 0 ? 'w-10 px-3 text-center' : ''
+                  index === 0 ? 'w-8 px-3 text-center' : index === 1 ? 'w-10 px-2 text-center' : ''
                 }`}
               >
                 {col}
@@ -92,12 +99,15 @@ export function IdeasTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-border/60">
-          {notes.map((note) => (
+          {notes.map((note, index) => (
             <TableRow
               key={note.id}
               note={note}
+              index={index}
               tableMode={tableMode}
               activeCellId={activeCellId}
+              isSelected={selectedIds?.has(note.id) ?? false}
+              onSelect={onRowSelect}
               onCellClick={onCellClick}
               onCellCommit={onCellCommit}
               onToggle={onRefetch}

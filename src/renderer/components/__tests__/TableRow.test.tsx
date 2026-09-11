@@ -52,12 +52,13 @@ describe('TableRow', () => {
     };
   });
 
-  it('renders all cells correctly in view mode', () => {
+  it('renders all cells correctly including selection checkbox', () => {
     render(
       <table>
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="view"
             activeCellId={null}
             onCellClick={vi.fn()}
@@ -68,6 +69,7 @@ describe('TableRow', () => {
       </table>
     );
 
+    expect(screen.getByTestId('row-checkbox-1')).toBeInTheDocument();
     expect(screen.getByText('Guitar Loop 1')).toBeInTheDocument();
     expect(screen.getByText('2:05')).toBeInTheDocument();
     expect(screen.getByText('120')).toBeInTheDocument();
@@ -79,6 +81,63 @@ describe('TableRow', () => {
     expect(screen.getByTestId('toggle-note-1')).toBeInTheDocument();
   });
 
+  it('handles checkbox selection click and calls onSelect with shiftKey state', () => {
+    const onSelect = vi.fn();
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            index={2}
+            tableMode="view"
+            activeCellId={null}
+            isSelected={false}
+            onSelect={onSelect}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const checkbox = screen.getByTestId('row-checkbox-1');
+    expect(checkbox).not.toBeChecked();
+
+    // Normal click
+    fireEvent.click(checkbox);
+    expect(onSelect).toHaveBeenCalledWith(1, 2, false);
+
+    // Shift click
+    fireEvent.click(checkbox, { shiftKey: true });
+    expect(onSelect).toHaveBeenCalledWith(1, 2, true);
+  });
+
+  it('applies selected row styling when isSelected is true', () => {
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            index={0}
+            tableMode="view"
+            activeCellId={null}
+            isSelected={true}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const checkbox = screen.getByTestId('row-checkbox-1');
+    expect(checkbox).toBeChecked();
+
+    const row = screen.getByTestId('note-row-1');
+    expect(row.className).toContain('bg-surface-secondary/50');
+  });
+
   it('does NOT trigger onCellClick when clicking cells in view mode', () => {
     const onCellClick = vi.fn();
     render(
@@ -86,6 +145,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="view"
             activeCellId={null}
             onCellClick={onCellClick}
@@ -110,6 +170,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="edit"
             activeCellId={null}
             onCellClick={onCellClick}
@@ -149,6 +210,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="edit"
             activeCellId={null}
             onCellClick={onCellClick}
@@ -170,6 +232,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="edit"
             activeCellId={{ noteId: 1, field: 'title' }}
             onCellClick={vi.fn()}
@@ -196,6 +259,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="edit"
             activeCellId={{ noteId: 1, field: 'bpm' }}
             onCellClick={vi.fn()}
@@ -215,12 +279,13 @@ describe('TableRow', () => {
     expect(onCellCommit).toHaveBeenCalledWith(1, 'bpm', '144');
   });
 
-  it('renders play button in column 0 and calls togglePlay when clicked', () => {
+  it('renders play button in column 1 and calls togglePlay when clicked', () => {
     render(
       <table>
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="view"
             activeCellId={null}
             onCellClick={vi.fn()}
@@ -248,6 +313,7 @@ describe('TableRow', () => {
         <tbody>
           <TableRow
             note={mockNote}
+            index={0}
             tableMode="view"
             activeCellId={null}
             onCellClick={vi.fn()}

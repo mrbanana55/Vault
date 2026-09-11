@@ -40,7 +40,6 @@ describe('useNotes hook', () => {
   beforeEach(() => {
     updateSpy = vi.fn().mockResolvedValue({ success: true });
 
-    // @ts-expect-error Mock window.vaultAPI
     window.vaultAPI = {
       notes: {
         getAll: vi.fn().mockResolvedValue({
@@ -58,7 +57,7 @@ describe('useNotes hook', () => {
         ),
         update: updateSpy,
       },
-    };
+    } as unknown as typeof window.vaultAPI;
   });
 
   afterEach(() => {

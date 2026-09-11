@@ -20,19 +20,37 @@ describe('AppLayout', () => {
     instruments: [{ id: 1, name: 'Guitar' }],
   };
 
+  const mockArchivedNote = {
+    id: 2,
+    title: 'Archived Idea',
+    file_path: 'recordings/2.wav',
+    duration_seconds: 60,
+    bpm: 130,
+    musical_key: 'A minor',
+    authors: 'Me',
+    song_section: 'Chorus',
+    notes: 'Archived note',
+    is_used: 1 as const,
+    created_at: '2026-09-08T13:00:00.000Z',
+    updated_at: '2026-09-08T13:00:00.000Z',
+    instruments: [{ id: 1, name: 'Guitar' }],
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
 
     window.vaultAPI = {
       notes: {
         create: vi.fn(),
-        getAll: vi.fn().mockResolvedValue({
-          success: true,
-          data: [mockNote],
+        getAll: vi.fn().mockImplementation((filter?: { is_used?: number }) => {
+          if (filter?.is_used === 1) {
+            return Promise.resolve({ success: true, data: [mockArchivedNote] });
+          }
+          return Promise.resolve({ success: true, data: [mockNote] });
         }),
-        getById: vi.fn().mockResolvedValue({
-          success: true,
-          data: mockNote,
+        getById: vi.fn().mockImplementation((id: number) => {
+          if (id === 2) return Promise.resolve({ success: true, data: mockArchivedNote });
+          return Promise.resolve({ success: true, data: mockNote });
         }),
         update: vi.fn().mockResolvedValue({
           success: true,
@@ -123,5 +141,47 @@ describe('AppLayout', () => {
         title: 'Acoustic Solo',
       });
     });
+  });
+
+  it('resets selection when switching tabs between Ideas and Archive', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Select idea 1
+    const checkbox = screen.getByTestId('row-checkbox-1');
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+
+    // Switch to Archive tab
+    const archiveTab = screen.getByRole('tab', { name: /Archive/i });
+    fireEvent.click(archiveTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Archived Idea')).toBeInTheDocument();
+    });
+
+    // Verify archived row is NOT selected
+    const archiveCheckbox = screen.getByTestId('row-checkbox-2');
+    expect(archiveCheckbox).not.toBeChecked();
+
+    // Switch back to Ideas tab
+    const ideasTab = screen.getByRole('tab', { name: /Ideas/i });
+    fireEvent.click(ideasTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Verify previous selection was reset upon leaving the tab
+    const restoredCheckbox = screen.getByTestId('row-checkbox-1');
+    expect(restoredCheckbox).not.toBeChecked();
   });
 });

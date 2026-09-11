@@ -115,7 +115,7 @@ describe('IdeasTable', () => {
     expect(screen.getByText('Second Idea')).toBeInTheDocument();
   });
 
-  it('renders table headers including the leftmost play button column', () => {
+  it('renders table headers including selection checkbox and play columns', () => {
     render(
       <IdeasTable
         isUsed={0}
@@ -131,9 +131,40 @@ describe('IdeasTable', () => {
     );
 
     const headers = screen.getAllByRole('columnheader');
-    expect(headers.length).toBe(11); // 1 play + 9 metadata + 1 action
+    expect(headers.length).toBe(12); // 1 checkbox + 1 play + 9 metadata + 1 action
     expect(headers[0].textContent).toBe('');
-    expect(headers[1].textContent).toBe('Title');
-    expect(headers[2].textContent).toBe('Duration');
+    expect(headers[1].textContent).toBe('');
+    expect(headers[2].textContent).toBe('Title');
+    expect(headers[3].textContent).toBe('Duration');
+  });
+
+  it('delegates row selection callbacks to TableRow checkboxes', () => {
+    const onRowSelect = vi.fn();
+    const selectedIds = new Set([1]);
+
+    render(
+      <IdeasTable
+        isUsed={0}
+        notes={mockNotes}
+        loading={false}
+        error={null}
+        onRefetch={vi.fn()}
+        tableMode="view"
+        activeCellId={null}
+        selectedIds={selectedIds}
+        onRowSelect={onRowSelect}
+        onCellClick={vi.fn()}
+        onCellCommit={vi.fn()}
+      />
+    );
+
+    const checkbox1 = screen.getByTestId('row-checkbox-1');
+    const checkbox2 = screen.getByTestId('row-checkbox-2');
+
+    expect(checkbox1).toBeChecked();
+    expect(checkbox2).not.toBeChecked();
+
+    fireEvent.click(checkbox2);
+    expect(onRowSelect).toHaveBeenCalledWith(2, 1, false);
   });
 });

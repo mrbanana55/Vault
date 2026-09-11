@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import type { NoteWithInstruments } from '../hooks/useNotes';
 import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edit';
 import { formatDuration, formatDate } from '../lib/format';
@@ -6,10 +6,13 @@ import { getNoteFieldDisplayValue } from '../lib/field-transforms';
 import { EditableCell } from './EditableCell';
 import { useAudioPlayer } from '../hooks/useAudioPlayer';
 
-interface TableRowProps {
+export interface TableRowProps {
   note: NoteWithInstruments;
+  index: number;
   tableMode: TableMode;
   activeCellId: ActiveCellId;
+  isSelected?: boolean;
+  onSelect?: (noteId: number, index: number, shiftKey: boolean) => void;
   onCellClick: (noteId: number, field: EditableField) => void;
   onCellCommit: (noteId: number, field: EditableField, value: string) => void;
   onToggle: () => void;
@@ -17,8 +20,11 @@ interface TableRowProps {
 
 export function TableRow({
   note,
+  index,
   tableMode,
   activeCellId,
+  isSelected = false,
+  onSelect,
   onCellClick,
   onCellCommit,
   onToggle,
@@ -52,17 +58,44 @@ export function TableRow({
     return activeCellId?.noteId === note.id && activeCellId?.field === field;
   }
 
+  function handleCheckboxClick(e: React.MouseEvent<HTMLInputElement>) {
+    e.stopPropagation();
+    if (e.shiftKey) {
+      // Prevent browser text selection on shift-click
+      window.getSelection()?.removeAllRanges();
+    }
+    onSelect?.(note.id, index, e.shiftKey);
+  }
+
+  // Row background hierarchy
+  const rowBackground = isPlayingThisNote
+    ? isSelected
+      ? 'bg-surface-secondary/90 ring-1 ring-accent-blue/50'
+      : 'bg-surface-secondary/60 hover:bg-surface-secondary/80'
+    : isSelected
+    ? 'bg-surface-secondary/50 hover:bg-surface-secondary/70'
+    : 'hover:bg-surface-hover';
+
   return (
     <tr
       data-testid={`note-row-${note.id}`}
-      className={`border-b border-border last:border-b-0 transition-colors text-content-primary ${
-        isCurrentNote
-          ? 'bg-surface-secondary/60 hover:bg-surface-secondary/80'
-          : 'hover:bg-surface-hover'
-      }`}
+      className={`border-b border-border last:border-b-0 transition-colors text-content-primary ${rowBackground}`}
     >
-      {/* 0. Play/Pause Action */}
-      <td className="px-3 py-3 w-10 text-center">
+      {/* 0. Selection Checkbox */}
+      <td className="px-3 py-3 w-8 text-center">
+        <input
+          type="checkbox"
+          data-testid={`row-checkbox-${note.id}`}
+          checked={isSelected}
+          onChange={() => {}} // Controlled by onClick
+          onClick={handleCheckboxClick}
+          aria-label={`Select ${note.title}`}
+          className="w-4 h-4 rounded border-border text-accent-blue focus:ring-accent-blue/40 cursor-pointer accent-accent-blue align-middle"
+        />
+      </td>
+
+      {/* 1. Play/Pause Action */}
+      <td className="px-2 py-3 w-10 text-center">
         <button
           type="button"
           onClick={() => togglePlay(note)}
@@ -79,7 +112,7 @@ export function TableRow({
         </button>
       </td>
 
-      {/* 1. Title (Editable) */}
+      {/* 2. Title (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'title')}
         isEditing={isEditingField('title')}
@@ -94,12 +127,12 @@ export function TableRow({
         {note.title}
       </EditableCell>
 
-      {/* 2. Duration (Non-editable) */}
+      {/* 3. Duration (Non-editable) */}
       <td className="px-4 py-3 text-content-secondary tabular-nums whitespace-nowrap">
         {formatDuration(note.duration_seconds)}
       </td>
 
-      {/* 3. BPM (Editable) */}
+      {/* 4. BPM (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'bpm')}
         isEditing={isEditingField('bpm')}
@@ -113,7 +146,7 @@ export function TableRow({
         {note.bpm ?? ''}
       </EditableCell>
 
-      {/* 4. Musical Key (Editable) */}
+      {/* 5. Musical Key (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'musical_key')}
         isEditing={isEditingField('musical_key')}
@@ -127,7 +160,7 @@ export function TableRow({
         {note.musical_key ?? ''}
       </EditableCell>
 
-      {/* 5. Authors (Editable) */}
+      {/* 6. Authors (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'authors')}
         isEditing={isEditingField('authors')}
@@ -142,7 +175,7 @@ export function TableRow({
         {note.authors ?? ''}
       </EditableCell>
 
-      {/* 6. Section (Editable) */}
+      {/* 7. Section (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'song_section')}
         isEditing={isEditingField('song_section')}
@@ -156,7 +189,7 @@ export function TableRow({
         {note.song_section ?? ''}
       </EditableCell>
 
-      {/* 7. Instruments (Editable) */}
+      {/* 8. Instruments (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'instruments')}
         isEditing={isEditingField('instruments')}
@@ -179,12 +212,12 @@ export function TableRow({
         </div>
       </EditableCell>
 
-      {/* 8. Date Created (Non-editable) */}
+      {/* 9. Date Created (Non-editable) */}
       <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
         {formatDate(note.created_at)}
       </td>
 
-      {/* 9. Notes (Editable) */}
+      {/* 10. Notes (Editable) */}
       <EditableCell
         value={getNoteFieldDisplayValue(note, 'notes')}
         isEditing={isEditingField('notes')}
@@ -199,7 +232,7 @@ export function TableRow({
         {note.notes ?? ''}
       </EditableCell>
 
-      {/* 10. Action Toggle (Non-editable) */}
+      {/* 11. Action Toggle (Non-editable) */}
       <td className="px-4 py-3 text-right">
         <button
           onClick={handleToggle}

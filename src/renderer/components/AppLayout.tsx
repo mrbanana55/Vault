@@ -11,6 +11,7 @@ import { CircularProgressModal } from './CircularProgressModal';
 import { useNotes } from '../hooks/useNotes';
 import { useInlineEdit } from '../hooks/useInlineEdit';
 import { useAudioImport } from '../hooks/useAudioImport';
+import { useRowSelection } from '../hooks/useRowSelection';
 import { transformFieldValue } from '../lib/field-transforms';
 
 export function AppLayout() {
@@ -18,6 +19,16 @@ export function AppLayout() {
   const [tableMode, setTableMode] = useState<TableMode>('view');
 
   const { notes, loading, error, refetch } = useNotes(activeTab);
+
+  const {
+    selectedIds,
+    handleRowSelect,
+    selectAll,
+    clearSelection,
+  } = useRowSelection({
+    notes,
+    activeTab,
+  });
 
   const handleSave = useCallback(
     async (
@@ -98,6 +109,10 @@ export function AppLayout() {
               activeCellId={activeCellId}
               onCellClick={startEdit}
               onCellCommit={commitEdit}
+              selectedIds={selectedIds}
+              onRowSelect={handleRowSelect}
+              onSelectAll={selectAll}
+              onClearSelection={clearSelection}
             />
           </div>
         </div>

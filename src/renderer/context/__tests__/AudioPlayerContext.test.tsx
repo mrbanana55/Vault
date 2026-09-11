@@ -178,12 +178,11 @@ describe('AudioPlayerContext', () => {
 
   it('resolves real duration on loadedmetadata and persists via vaultAPI when note duration <= 0', async () => {
     const updateSpy = vi.fn().mockResolvedValue({ success: true });
-    // @ts-expect-error Mock vaultAPI
     window.vaultAPI = {
       notes: {
         update: updateSpy,
       },
-    };
+    } as unknown as typeof window.vaultAPI;
 
     let metadataHandler: (() => void) | null = null;
     const originalAddEventListener = window.HTMLMediaElement.prototype.addEventListener;
