@@ -1,5 +1,6 @@
 import type { NoteWithInstruments } from '../hooks/useNotes';
 import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edit';
+import { TABLE_COLUMNS } from '../lib/table-columns';
 import { TableRow } from './TableRow';
 import { EmptyState } from './EmptyState';
 
@@ -13,26 +14,12 @@ export interface IdeasTableProps {
   activeCellId: ActiveCellId;
   onCellClick: (noteId: number, field: EditableField) => void;
   onCellCommit: (noteId: number, field: EditableField, value: string) => void;
+  onNoteClick?: (note: NoteWithInstruments) => void;
   selectedIds?: Set<number>;
   onRowSelect?: (noteId: number, index: number, shiftKey: boolean) => void;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
 }
-
-const TABLE_COLUMNS = [
-  '', // 0. Checkbox
-  '', // 1. Play/Pause
-  'Title',
-  'Duration',
-  'BPM',
-  'Key',
-  'Authors',
-  'Section',
-  'Instruments',
-  'Created',
-  'Notes',
-  '', // Action
-];
 
 export function IdeasTable({
   isUsed,
@@ -44,6 +31,7 @@ export function IdeasTable({
   activeCellId,
   onCellClick,
   onCellCommit,
+  onNoteClick,
   selectedIds,
   onRowSelect,
 }: IdeasTableProps) {
@@ -82,18 +70,19 @@ export function IdeasTable({
 
   return (
     <div className="w-full overflow-x-auto">
-      <table className="w-full text-left text-xs border-collapse">
+      <table className="w-full table-fixed text-xs border-collapse min-w-[1100px]">
         <thead className="sticky top-0 bg-surface-primary border-b border-border z-10">
           <tr>
             {TABLE_COLUMNS.map((col, index) => (
               <th
-                key={index}
+                key={col.id || index}
                 scope="col"
-                className={`px-4 py-2.5 font-semibold text-content-secondary uppercase tracking-wider text-[11px] ${
-                  index === 0 ? 'w-8 px-3 text-center' : index === 1 ? 'w-10 px-2 text-center' : ''
+                title={col.tooltip}
+                className={`px-4 py-2.5 font-semibold text-content-secondary uppercase tracking-wider text-[11px] text-center cursor-default select-none ${col.widthClass} ${
+                  index === 0 ? 'px-3' : index === 1 ? 'px-2' : ''
                 }`}
               >
-                {col}
+                {col.label}
               </th>
             ))}
           </tr>
@@ -110,6 +99,7 @@ export function IdeasTable({
               onSelect={onRowSelect}
               onCellClick={onCellClick}
               onCellCommit={onCellCommit}
+              onNoteClick={onNoteClick}
               onToggle={onRefetch}
             />
           ))}

@@ -26,7 +26,7 @@ export function DeleteButton({
       title={selectedCount > 0 ? `Delete (${selectedCount})` : 'Select ideas to delete'}
       className={`
         inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all select-none
-        border border-border/80 shadow-xs
+        border border-border shadow-xs
         ${
           isDisabled
             ? 'opacity-40 cursor-not-allowed bg-surface-primary text-content-secondary'

@@ -25,7 +25,9 @@
     --color-toggle-active: #30d158;
   }
 
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: 100%;
     margin: 0;
   }
@@ -33,7 +35,8 @@
   body {
     background-color: var(--color-surface-secondary);
     color: var(--color-content-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text',
-      'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    font-family:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto,
+      Oxygen, Ubuntu, sans-serif;
   }
 }

@@ -1,6 +1,6 @@
-import { useRef } from 'react';
-import { ThemeToggle } from './ThemeToggle';
-import { AudioTimeBar } from './AudioTimeBar';
+import { useRef } from "react";
+import { ThemeToggle } from "./ThemeToggle";
+import { AudioTimeBar } from "./AudioTimeBar";
 
 export interface HeaderProps {
   onImportFiles?: (files: FileList | File[]) => void;
@@ -16,21 +16,18 @@ export function Header({ onImportFiles }: HeaderProps = {}) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0 && onImportFiles) {
       onImportFiles(e.target.files);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   return (
     <header
       data-testid="app-header"
-      className="h-13 border-b border-border bg-surface-primary flex items-center justify-between px-6 shrink-0 transition-colors select-none"
+      className="h-13 py-3 border-b border-border bg-surface-primary flex items-center justify-between px-6 shrink-0 transition-colors select-none"
     >
       <div className="flex items-center gap-2.5 shrink-0">
         <span className="text-base font-bold tracking-tight text-content-primary">
           Vault
-        </span>
-        <span className="text-[11px] px-2 py-0.5 rounded-full bg-surface-secondary text-content-secondary border border-border/70 font-medium">
-          Music Ideas
         </span>
       </div>
       <AudioTimeBar />

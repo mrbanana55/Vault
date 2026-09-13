@@ -1,27 +1,38 @@
-import { useState, useCallback } from 'react';
-import type { UpdateAudioNoteInput } from '@shared/types';
-import type { TableMode, EditableField } from '../types/inline-edit';
-import { Header } from './Header';
-import { TabBar } from './TabBar';
-import { ModeToggle } from './ModeToggle';
-import { DeleteButton } from './DeleteButton';
-import { DeleteConfirmationModal } from './DeleteConfirmationModal';
-import { IdeasTable } from './IdeasTable';
-import { RecordingPanel } from './RecordingPanel';
-import { DragDropOverlay } from './DragDropOverlay';
-import { CircularProgressModal } from './CircularProgressModal';
-import { useNotes } from '../hooks/useNotes';
-import { useInlineEdit } from '../hooks/useInlineEdit';
-import { useAudioImport } from '../hooks/useAudioImport';
-import { useRowSelection } from '../hooks/useRowSelection';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
-import { transformFieldValue } from '../lib/field-transforms';
+import { useState, useCallback } from "react";
+import type { UpdateAudioNoteInput } from "@shared/types";
+import type { NoteWithInstruments } from "../hooks/useNotes";
+import type { TableMode, EditableField } from "../types/inline-edit";
+import { Header } from "./Header";
+import { TabBar } from "./TabBar";
+import { ModeToggle } from "./ModeToggle";
+import { DeleteButton } from "./DeleteButton";
+import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { NoteReaderModal } from "./NoteReaderModal";
+import { IdeasTable } from "./IdeasTable";
+import { RecordingPanel } from "./RecordingPanel";
+import { DragDropOverlay } from "./DragDropOverlay";
+import { CircularProgressModal } from "./CircularProgressModal";
+import { useNotes } from "../hooks/useNotes";
+import { useInlineEdit } from "../hooks/useInlineEdit";
+import { useAudioImport } from "../hooks/useAudioImport";
+import { useRowSelection } from "../hooks/useRowSelection";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
+import { transformFieldValue } from "../lib/field-transforms";
 
 export function AppLayout() {
   const [activeTab, setActiveTab] = useState<0 | 1>(0);
-  const [tableMode, setTableMode] = useState<TableMode>('view');
+  const [tableMode, setTableMode] = useState<TableMode>("view");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [noteReaderModal, setNoteReaderModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    notes: string;
+  }>({
+    isOpen: false,
+    title: "",
+    notes: "",
+  });
 
   const { notes, loading, error, refetch } = useNotes(activeTab);
   const { currentNote, pause } = useAudioPlayer();
@@ -41,7 +52,7 @@ export function AppLayout() {
     async (
       noteId: number,
       field: EditableField,
-      value: string
+      value: string,
     ): Promise<boolean> => {
       const transform = transformFieldValue(field, value);
       if (!transform.valid || !transform.value) {
@@ -59,11 +70,11 @@ export function AppLayout() {
         }
         return false;
       } catch (err) {
-        console.error('Error updating note:', err);
+        console.error("Error updating note:", err);
         return false;
       }
     },
-    [refetch]
+    [refetch],
   );
 
   const { activeCellId, startEdit, commitEdit, clearEdit } =
@@ -71,12 +82,12 @@ export function AppLayout() {
 
   const handleModeChange = useCallback(
     (newMode: TableMode) => {
-      if (newMode === 'view' && activeCellId) {
+      if (newMode === "view" && activeCellId) {
         clearEdit();
       }
       setTableMode(newMode);
     },
-    [activeCellId, clearEdit]
+    [activeCellId, clearEdit],
   );
 
   const handleTabChange = useCallback(
@@ -84,8 +95,18 @@ export function AppLayout() {
       clearEdit();
       setActiveTab(tab);
     },
-    [clearEdit]
+    [clearEdit],
   );
+
+  const handleNoteClick = useCallback((note: NoteWithInstruments) => {
+    if (note.notes && note.notes.trim().length > 0) {
+      setNoteReaderModal({
+        isOpen: true,
+        title: note.title,
+        notes: note.notes,
+      });
+    }
+  }, []);
 
   const handleImportComplete = useCallback(() => {
     refetch();
@@ -115,11 +136,19 @@ export function AppLayout() {
       refetch();
       setIsConfirmOpen(false);
     } catch (err) {
-      console.error('Error deleting notes:', err);
+      console.error("Error deleting notes:", err);
     } finally {
       setIsDeleting(false);
     }
-  }, [selectedCount, isDeleting, currentNote, selectedIds, pause, clearSelection, refetch]);
+  }, [
+    selectedCount,
+    isDeleting,
+    currentNote,
+    selectedIds,
+    pause,
+    clearSelection,
+    refetch,
+  ]);
 
   return (
     <div className="flex flex-col h-screen bg-surface-secondary text-content-primary overflow-hidden transition-colors">
@@ -147,6 +176,7 @@ export function AppLayout() {
               activeCellId={activeCellId}
               onCellClick={startEdit}
               onCellCommit={commitEdit}
+              onNoteClick={handleNoteClick}
               selectedIds={selectedIds}
               onRowSelect={handleRowSelect}
               onSelectAll={selectAll}
@@ -175,6 +205,14 @@ export function AppLayout() {
         onCancel={() => {
           if (!isDeleting) setIsConfirmOpen(false);
         }}
+      />
+      <NoteReaderModal
+        isOpen={noteReaderModal.isOpen}
+        title={noteReaderModal.title}
+        notes={noteReaderModal.notes}
+        onClose={() =>
+          setNoteReaderModal((prev) => ({ ...prev, isOpen: false }))
+        }
       />
     </div>
   );

@@ -1,10 +1,14 @@
-import React, { useState } from 'react';
-import type { NoteWithInstruments } from '../hooks/useNotes';
-import type { TableMode, EditableField, ActiveCellId } from '../types/inline-edit';
-import { formatDuration, formatDate } from '../lib/format';
-import { getNoteFieldDisplayValue } from '../lib/field-transforms';
-import { EditableCell } from './EditableCell';
-import { useAudioPlayer } from '../hooks/useAudioPlayer';
+import React, { useState } from "react";
+import type { NoteWithInstruments } from "../hooks/useNotes";
+import type {
+  TableMode,
+  EditableField,
+  ActiveCellId,
+} from "../types/inline-edit";
+import { formatDuration, formatDate } from "../lib/format";
+import { getNoteFieldDisplayValue } from "../lib/field-transforms";
+import { EditableCell } from "./EditableCell";
+import { useAudioPlayer } from "../hooks/useAudioPlayer";
 
 export interface TableRowProps {
   note: NoteWithInstruments;
@@ -15,6 +19,7 @@ export interface TableRowProps {
   onSelect?: (noteId: number, index: number, shiftKey: boolean) => void;
   onCellClick: (noteId: number, field: EditableField) => void;
   onCellCommit: (noteId: number, field: EditableField, value: string) => void;
+  onNoteClick?: (note: NoteWithInstruments) => void;
   onToggle: () => void;
 }
 
@@ -27,6 +32,7 @@ export function TableRow({
   onSelect,
   onCellClick,
   onCellCommit,
+  onNoteClick,
   onToggle,
 }: TableRowProps) {
   const [isUpdating, setIsUpdating] = useState(false);
@@ -67,14 +73,16 @@ export function TableRow({
     onSelect?.(note.id, index, e.shiftKey);
   }
 
+  const hasNotesContent = Boolean(note.notes && note.notes.trim().length > 0);
+
   // Row background hierarchy
   const rowBackground = isPlayingThisNote
     ? isSelected
-      ? 'bg-surface-secondary/90 ring-1 ring-accent-blue/50'
-      : 'bg-surface-secondary/60 hover:bg-surface-secondary/80'
+      ? "bg-surface-secondary/90 ring-1 ring-accent-blue/50"
+      : "bg-surface-secondary/60 hover:bg-surface-secondary/80"
     : isSelected
-    ? 'bg-surface-secondary/50 hover:bg-surface-secondary/70'
-    : 'hover:bg-surface-hover';
+      ? "bg-surface-secondary/50 hover:bg-surface-secondary/70"
+      : "hover:bg-surface-hover";
 
   return (
     <tr
@@ -82,7 +90,7 @@ export function TableRow({
       className={`border-b border-border last:border-b-0 transition-colors text-content-primary ${rowBackground}`}
     >
       {/* 0. Selection Checkbox */}
-      <td className="px-3 py-3 w-8 text-center">
+      <td className="px-3 py-3 w-10 text-center cursor-default">
         <input
           type="checkbox"
           data-testid={`row-checkbox-${note.id}`}
@@ -95,112 +103,119 @@ export function TableRow({
       </td>
 
       {/* 1. Play/Pause Action */}
-      <td className="px-2 py-3 w-10 text-center">
+      <td className="px-2 py-3 w-10 text-center cursor-default">
         <button
           type="button"
           onClick={() => togglePlay(note)}
           data-testid={`row-play-button-${note.id}`}
-          aria-label={isPlayingThisNote ? `Pause ${note.title}` : `Play ${note.title}`}
-          title={isPlayingThisNote ? 'Pause' : 'Play'}
-          className={`p-1.5 rounded-full transition-colors ${
+          aria-label={
+            isPlayingThisNote ? `Pause ${note.title}` : `Play ${note.title}`
+          }
+          title={isPlayingThisNote ? "Pause" : "Play"}
+          className={`p-1.5 rounded-full transition-colors cursor-pointer ${
             isPlayingThisNote
-              ? 'text-accent-blue bg-accent-blue/10 hover:bg-accent-blue/20'
-              : 'text-content-secondary hover:text-content-primary hover:bg-surface-secondary'
+              ? "text-accent-blue bg-accent-blue/10 hover:bg-accent-blue/20"
+              : "text-content-secondary hover:text-content-primary hover:bg-surface-secondary"
           }`}
         >
           {isPlayingThisNote ? <PauseIcon /> : <PlayIcon />}
         </button>
       </td>
 
-      {/* 2. Title (Editable) */}
+      {/* 2. Title (Editable, Left-Aligned) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'title')}
-        isEditing={isEditingField('title')}
+        value={getNoteFieldDisplayValue(note, "title")}
+        isEditing={isEditingField("title")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'title')}
-        onCommit={(val) => onCellCommit(note.id, 'title', val)}
-        className="font-medium max-w-[180px] truncate"
+        align="left"
+        onClick={() => onCellClick(note.id, "title")}
+        onCommit={(val) => onCellCommit(note.id, "title", val)}
+        className="font-medium truncate"
         title={note.title}
         data-testid={`cell-title-${note.id}`}
       >
         {note.title}
       </EditableCell>
 
-      {/* 3. Duration (Non-editable) */}
-      <td className="px-4 py-3 text-content-secondary tabular-nums whitespace-nowrap">
+      {/* 3. Duration (Non-editable, Centered) */}
+      <td className="px-4 py-3 text-center text-content-secondary tabular-nums whitespace-nowrap cursor-default">
         {formatDuration(note.duration_seconds)}
       </td>
 
-      {/* 4. BPM (Editable) */}
+      {/* 4. BPM (Editable, Centered) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'bpm')}
-        isEditing={isEditingField('bpm')}
+        value={getNoteFieldDisplayValue(note, "bpm")}
+        isEditing={isEditingField("bpm")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'bpm')}
-        onCommit={(val) => onCellCommit(note.id, 'bpm', val)}
+        align="center"
+        onClick={() => onCellClick(note.id, "bpm")}
+        onCommit={(val) => onCellCommit(note.id, "bpm", val)}
         className="text-content-secondary tabular-nums whitespace-nowrap"
         data-testid={`cell-bpm-${note.id}`}
       >
-        {note.bpm ?? ''}
+        {note.bpm ?? ""}
       </EditableCell>
 
-      {/* 5. Musical Key (Editable) */}
+      {/* 5. Musical Key (Editable, Centered) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'musical_key')}
-        isEditing={isEditingField('musical_key')}
+        value={getNoteFieldDisplayValue(note, "musical_key")}
+        isEditing={isEditingField("musical_key")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'musical_key')}
-        onCommit={(val) => onCellCommit(note.id, 'musical_key', val)}
+        align="center"
+        onClick={() => onCellClick(note.id, "musical_key")}
+        onCommit={(val) => onCellCommit(note.id, "musical_key", val)}
         className="text-content-secondary whitespace-nowrap"
         data-testid={`cell-key-${note.id}`}
       >
-        {note.musical_key ?? ''}
+        {note.musical_key ?? ""}
       </EditableCell>
 
-      {/* 6. Authors (Editable) */}
+      {/* 6. Authors (Editable, Centered) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'authors')}
-        isEditing={isEditingField('authors')}
+        value={getNoteFieldDisplayValue(note, "authors")}
+        isEditing={isEditingField("authors")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'authors')}
-        onCommit={(val) => onCellCommit(note.id, 'authors', val)}
-        className="text-content-secondary max-w-[140px] truncate"
-        title={note.authors ?? ''}
+        align="center"
+        onClick={() => onCellClick(note.id, "authors")}
+        onCommit={(val) => onCellCommit(note.id, "authors", val)}
+        className="text-content-secondary truncate"
+        title={note.authors ?? ""}
         data-testid={`cell-authors-${note.id}`}
       >
-        {note.authors ?? ''}
+        {note.authors ?? ""}
       </EditableCell>
 
-      {/* 7. Section (Editable) */}
+      {/* 7. Section (Editable, Centered) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'song_section')}
-        isEditing={isEditingField('song_section')}
+        value={getNoteFieldDisplayValue(note, "song_section")}
+        isEditing={isEditingField("song_section")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'song_section')}
-        onCommit={(val) => onCellCommit(note.id, 'song_section', val)}
+        align="center"
+        onClick={() => onCellClick(note.id, "song_section")}
+        onCommit={(val) => onCellCommit(note.id, "song_section", val)}
         className="text-content-secondary whitespace-nowrap"
         data-testid={`cell-section-${note.id}`}
       >
-        {note.song_section ?? ''}
+        {note.song_section ?? ""}
       </EditableCell>
 
-      {/* 8. Instruments (Editable) */}
+      {/* 8. Instruments (Editable, Left-Aligned) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'instruments')}
-        isEditing={isEditingField('instruments')}
+        value={getNoteFieldDisplayValue(note, "instruments")}
+        isEditing={isEditingField("instruments")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'instruments')}
-        onCommit={(val) => onCellCommit(note.id, 'instruments', val)}
-        className="max-w-[200px]"
+        align="center"
+        onClick={() => onCellClick(note.id, "instruments")}
+        onCommit={(val) => onCellCommit(note.id, "instruments", val)}
         data-testid={`cell-instruments-${note.id}`}
       >
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 justify-center">
           {note.instruments.map((inst) => (
             <span
               key={inst.id}
@@ -212,35 +227,44 @@ export function TableRow({
         </div>
       </EditableCell>
 
-      {/* 9. Date Created (Non-editable) */}
-      <td className="px-4 py-3 text-content-secondary whitespace-nowrap">
+      {/* 9. Date Created (Non-editable, Centered) */}
+      <td className="px-4 py-3 text-center text-content-secondary whitespace-nowrap cursor-default">
         {formatDate(note.created_at)}
       </td>
 
-      {/* 10. Notes (Editable) */}
+      {/* 10. Notes (Editable in Edit Mode, Clickable Modal in View Mode, Left-Aligned) */}
       <EditableCell
-        value={getNoteFieldDisplayValue(note, 'notes')}
-        isEditing={isEditingField('notes')}
+        value={getNoteFieldDisplayValue(note, "notes")}
+        isEditing={isEditingField("notes")}
         isEditable={true}
         tableMode={tableMode}
-        onClick={() => onCellClick(note.id, 'notes')}
-        onCommit={(val) => onCellCommit(note.id, 'notes', val)}
-        className="text-content-secondary max-w-[160px] truncate"
-        title={note.notes ?? ''}
+        align="left"
+        isViewClickable={hasNotesContent}
+        onViewClick={() => {
+          if (hasNotesContent) {
+            onNoteClick?.(note);
+          }
+        }}
+        onClick={() => onCellClick(note.id, "notes")}
+        onCommit={(val) => onCellCommit(note.id, "notes", val)}
+        className="text-content-secondary truncate"
+        title={note.notes ?? ""}
         data-testid={`cell-notes-${note.id}`}
       >
-        {note.notes ?? ''}
+        {note.notes ?? ""}
       </EditableCell>
 
-      {/* 11. Action Toggle (Non-editable) */}
-      <td className="px-4 py-3 text-right">
+      {/* 11. Action Toggle (Non-editable, Centered) */}
+      <td className="px-4 py-3 text-center cursor-default">
         <button
           onClick={handleToggle}
           disabled={isUpdating}
           data-testid={`toggle-note-${note.id}`}
-          aria-label={note.is_used === 0 ? 'Archive this idea' : 'Restore this idea'}
-          title={note.is_used === 0 ? 'Archive this idea' : 'Restore this idea'}
-          className="p-1.5 rounded-md hover:bg-surface-secondary text-content-secondary hover:text-accent transition-colors disabled:opacity-50"
+          aria-label={
+            note.is_used === 0 ? "Archive this idea" : "Restore this idea"
+          }
+          title={note.is_used === 0 ? "Archive this idea" : "Restore this idea"}
+          className="p-1.5 rounded-md hover:bg-surface-secondary text-content-secondary hover:text-accent transition-colors disabled:opacity-50 cursor-pointer"
         >
           {note.is_used === 0 ? <ArchiveIcon /> : <RestoreIcon />}
         </button>
@@ -251,8 +275,16 @@ export function TableRow({
 
 function ArchiveIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="21 8 21 21 3 21 3 8" />
       <rect x="1" y="3" width="22" height="5" />
       <line x1="10" y1="12" x2="14" y2="12" />
@@ -262,8 +294,16 @@ function ArchiveIcon() {
 
 function RestoreIcon() {
   return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polyline points="1 4 1 10 7 10" />
       <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
     </svg>

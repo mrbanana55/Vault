@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { AppLayout } from '../AppLayout';
 import { ThemeProvider } from '../../context/ThemeContext';
 
@@ -255,5 +255,55 @@ describe('AppLayout', () => {
       expect(window.vaultAPI.notes.delete).toHaveBeenCalledWith(1);
       expect(screen.queryByTestId('delete-confirmation-modal')).not.toBeInTheDocument();
     });
+  });
+
+  it('opens NoteReaderModal when clicking notes cell in View mode and closes it', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // In View mode by default
+    const notesCell = screen.getByTestId('cell-notes-1');
+    fireEvent.click(notesCell);
+
+    // Modal should be open
+    const modal = screen.getByTestId('note-reader-modal');
+    expect(modal).toBeInTheDocument();
+    expect(within(modal).getByText('Sample note')).toBeInTheDocument();
+
+    // Close modal via close button
+    const closeBtn = screen.getByTestId('note-reader-close-button');
+    fireEvent.click(closeBtn);
+
+    expect(screen.queryByTestId('note-reader-modal')).not.toBeInTheDocument();
+  });
+
+  it('does NOT open NoteReaderModal when clicking notes in Edit mode', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Switch to edit mode
+    fireEvent.click(screen.getByTestId('mode-edit'));
+
+    // Click notes cell to edit
+    const notesCell = screen.getByTestId('cell-notes-1');
+    fireEvent.click(notesCell);
+
+    // Modal should NOT be open; inline input should be rendered
+    expect(screen.queryByTestId('note-reader-modal')).not.toBeInTheDocument();
+    expect(screen.getByTestId('cell-input')).toBeInTheDocument();
   });
 });

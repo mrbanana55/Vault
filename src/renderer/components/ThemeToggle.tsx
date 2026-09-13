@@ -1,4 +1,4 @@
-import { useTheme } from '../context/ThemeContext';
+import { useTheme } from "../context/ThemeContext";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
@@ -7,11 +7,13 @@ export function ThemeToggle() {
     <button
       onClick={toggleTheme}
       data-testid="theme-toggle"
-      aria-label={theme === 'light' ? 'Switch to dark theme' : 'Switch to light theme'}
-      title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
-      className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-surface-hover/80 transition-colors focus:outline-hidden focus:ring-2 focus:ring-accent/30"
+      aria-label={
+        theme === "light" ? "Switch to dark theme" : "Switch to light theme"
+      }
+      title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+      className="p-2 rounded-lg text-content-secondary hover:text-content-primary hover:bg-surface-hover/80 transition-colors focus:outline-hidden "
     >
-      {theme === 'light' ? <SunIcon /> : <MoonIcon />}
+      {theme === "light" ? <SunIcon /> : <MoonIcon />}
     </button>
   );
 }

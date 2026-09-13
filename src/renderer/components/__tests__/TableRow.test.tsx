@@ -330,4 +330,143 @@ describe('TableRow', () => {
     const row = screen.getByTestId('note-row-1');
     expect(row.className).toContain('bg-surface-secondary');
   });
+
+  it('aligns cell contents properly (title and notes left-aligned, all others centered)', () => {
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            index={0}
+            tableMode="view"
+            activeCellId={null}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    // Title: left-aligned
+    const titleCell = screen.getByTestId('cell-title-1');
+    expect(titleCell.className).toContain('text-left');
+
+    // Notes: left-aligned
+    const notesCell = screen.getByTestId('cell-notes-1');
+    expect(notesCell.className).toContain('text-left');
+
+    // Duration: centered
+    const durationCell = screen.getByText('2:05');
+    expect(durationCell.className).toContain('text-center');
+
+    // BPM: centered
+    const bpmCell = screen.getByTestId('cell-bpm-1');
+    expect(bpmCell.className).toContain('text-center');
+
+    // Key: centered
+    const keyCell = screen.getByTestId('cell-key-1');
+    expect(keyCell.className).toContain('text-center');
+
+    // Authors: centered
+    const authorsCell = screen.getByTestId('cell-authors-1');
+    expect(authorsCell.className).toContain('text-center');
+
+    // Section: centered
+    const sectionCell = screen.getByTestId('cell-section-1');
+    expect(sectionCell.className).toContain('text-center');
+
+    // Instruments: centered
+    const instrumentsCell = screen.getByTestId('cell-instruments-1');
+    expect(instrumentsCell.className).toContain('text-center');
+    expect(instrumentsCell.querySelector('.justify-center')).toBeInTheDocument();
+
+    // Created: centered
+    const createdCell = screen.getByText('Sep 8, 2026');
+    expect(createdCell.className).toContain('text-center');
+  });
+
+  it('handles note click in view mode when note has content', () => {
+    const onNoteClick = vi.fn();
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            index={0}
+            tableMode="view"
+            activeCellId={null}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onNoteClick={onNoteClick}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const notesCell = screen.getByTestId('cell-notes-1');
+    expect(notesCell.className).toContain('cursor-pointer');
+
+    fireEvent.click(notesCell);
+    expect(onNoteClick).toHaveBeenCalledWith(mockNote);
+  });
+
+  it('shows cursor-default on notes cell in view mode when note has NO content', () => {
+    const onNoteClick = vi.fn();
+    const emptyNotesNote = { ...mockNote, notes: '   ' };
+
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={emptyNotesNote}
+            index={0}
+            tableMode="view"
+            activeCellId={null}
+            onCellClick={vi.fn()}
+            onCellCommit={vi.fn()}
+            onNoteClick={onNoteClick}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const notesCell = screen.getByTestId('cell-notes-1');
+    expect(notesCell.className).toContain('cursor-default');
+    expect(notesCell.className).not.toContain('cursor-pointer');
+
+    fireEvent.click(notesCell);
+    expect(onNoteClick).not.toHaveBeenCalled();
+  });
+
+  it('triggers inline editing and NOT onNoteClick when clicking notes cell in edit mode', () => {
+    const onCellClick = vi.fn();
+    const onNoteClick = vi.fn();
+
+    render(
+      <table>
+        <tbody>
+          <TableRow
+            note={mockNote}
+            index={0}
+            tableMode="edit"
+            activeCellId={null}
+            onCellClick={onCellClick}
+            onCellCommit={vi.fn()}
+            onNoteClick={onNoteClick}
+            onToggle={vi.fn()}
+          />
+        </tbody>
+      </table>
+    );
+
+    const notesCell = screen.getByTestId('cell-notes-1');
+    expect(notesCell.className).toContain('cursor-pointer');
+
+    fireEvent.click(notesCell);
+    expect(onCellClick).toHaveBeenCalledWith(1, 'notes');
+    expect(onNoteClick).not.toHaveBeenCalled();
+  });
 });

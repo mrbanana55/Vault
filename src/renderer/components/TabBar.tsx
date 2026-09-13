@@ -4,8 +4,8 @@ export interface TabBarProps {
 }
 
 const TABS = [
-  { value: 0 as const, label: 'Ideas' },
-  { value: 1 as const, label: 'Archive' },
+  { value: 0 as const, label: "Ideas" },
+  { value: 1 as const, label: "Archive" },
 ];
 
 export function TabBar({ activeTab, onTabChange }: TabBarProps) {
@@ -13,7 +13,7 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
     <div
       role="tablist"
       aria-label="Idea status tabs"
-      className="inline-flex rounded-lg bg-surface-primary p-1 border border-border/80 shadow-xs"
+      className="inline-flex rounded-lg bg-surface-primary p-1 border border-border"
     >
       {TABS.map((tab) => {
         const isActive = activeTab === tab.value;
@@ -27,8 +27,8 @@ export function TabBar({ activeTab, onTabChange }: TabBarProps) {
               px-4 py-1.5 rounded-md text-xs font-medium transition-all select-none
               ${
                 isActive
-                  ? 'bg-surface-secondary text-content-primary shadow-xs font-semibold'
-                  : 'text-content-secondary hover:text-content-primary hover:bg-surface-hover/50'
+                  ? "bg-surface-secondary text-content-primary shadow-xs font-semibold"
+                  : "text-content-secondary hover:text-content-primary hover:bg-surface-hover/50"
               }
             `}
           >

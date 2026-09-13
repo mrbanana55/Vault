@@ -755,3 +755,75 @@ Today's session specified, planned, implemented, and verified **Spec 011: Delete
    - **Unified Language:** 100% English code, comments, specs, and commit conventions.
 
 ---
+
+# Session Log — 2026-09-12
+
+## Executive Summary
+
+Today's session specified, planned, implemented, and verified **Spec 012: Ideas Table UI Enhancements**. Following strict **Spec-Driven Development (SDD)** and constitutional principles (Stack Simplicity, Process Separation, Data Integrity, Verifiable Tests, Unified Language), we addressed key ergonomic and aesthetic refinements in the Ideas Table catalog:
+1. **Fixed Column Sizing**: Locked column widths via `table-fixed`, proportional width classes across all 12 columns, and `min-w-[1100px]`, eliminating abrupt layout jumps and neighbor cell shifting during inline editing.
+2. **Centered Text & Column Headers**: Centered all 12 column header labels in `<th>`; centered data rows across Duration, BPM, Key, Authors, Section, Instruments (with centered badges), Created, and Action columns, while keeping Title and Notes left-aligned for natural reading.
+3. **Cursor Ergonomics**: Applied `cursor-pointer` to editable cells in Edit mode; set `cursor-default select-none` on column headers; and in View mode set `cursor-default` across static elements, reserving `cursor-pointer` exclusively for interactive controls (Checkbox, Play/Pause, Action, and Notes with text).
+4. **Column Header Tooltips**: Provided informative hover tooltips for every column header explaining definitions and formatting conventions (e.g., comma separation for Authors and Instruments).
+5. **View Mode Note Reader Modal**: Implemented `<NoteReaderModal />` allowing users to click non-empty Notes in View mode to view untruncated note text in an Apple HIG-styled dialog, dismissible via Close button, backdrop click, or Escape key.
+
+All 25 tasks across 7 phases were completed with 100% test pass rate (**248 passing tests across 38 test suites**, up from 234 tests across 37 suites).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Planning & Tasks (SDD)
+
+- **Spec 012 Authored:** [`specs/012-table-ui-enhancements/spec.md`](specs/012-table-ui-enhancements/spec.md) covering 4 prioritized user stories (Stable Column Layout & Content Alignment, Clear Hover Affordance & Context-Sensitive Cursors, Column Header Information Tooltips, View Mode Full Notes Modal Reader), 14 functional requirements, and 5 measurable success criteria.
+- **Checklist Validation:** Verified [`specs/012-table-ui-enhancements/checklists/requirements.md`](specs/012-table-ui-enhancements/checklists/requirements.md) (16/16 checks passing).
+- **Technical Plan & Artifacts:** Authored [`plan.md`](specs/012-table-ui-enhancements/plan.md), [`research.md`](specs/012-table-ui-enhancements/research.md), [`data-model.md`](specs/012-table-ui-enhancements/data-model.md), [`contracts/ui-contracts.md`](specs/012-table-ui-enhancements/contracts/ui-contracts.md), [`quickstart.md`](specs/012-table-ui-enhancements/quickstart.md), and [`tasks.md`](specs/012-table-ui-enhancements/tasks.md).
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Created `src/renderer/lib/table-columns.ts` defining `TableColumnConfig` interface. | ✅ Done |
+| **Phase 2: Foundational** | Defined `TABLE_COLUMNS` dictionary in `table-columns.ts` with column widths, alignments, and tooltip copy. Created unit test scaffold in `src/renderer/components/__tests__/NoteReaderModal.test.tsx`. | ✅ Done |
+| **Phase 3: US1 Column Layout & Alignment (MVP)** | Configured `table-fixed`, `w-full`, and `min-w-[1100px]` in `IdeasTable.tsx`. Centered all header labels. Updated `TableRow.tsx` to center Duration, BPM, Key, Authors, Section, Instruments (flex `justify-center`), Created, and Action, while preserving left alignment on Title and Notes. Updated `EditableCell.tsx` with `align` support. Added test coverage in `IdeasTable.test.tsx` and `TableRow.test.tsx`. | ✅ Done |
+| **Phase 4: US2 Context-Sensitive Cursors** | Updated `EditableCell.tsx` to show `cursor-pointer` when editable in Edit mode. Updated `IdeasTable.tsx` to set `cursor-default select-none` on `<th>`. Updated `TableRow.tsx` to enforce `cursor-default` on static cells and conditionally apply `cursor-pointer` to Notes only when note text is present. Added unit tests in `EditableCell.test.tsx` and `TableRow.test.tsx`. | ✅ Done |
+| **Phase 5: US3 Column Header Tooltips** | Bound descriptive tooltips from `table-columns.ts` to `title` attributes on all `<th>` headers in `IdeasTable.tsx`. Added unit tests in `IdeasTable.test.tsx`. | ✅ Done |
+| **Phase 6: US4 Full Notes Modal Reader** | Implemented `<NoteReaderModal />` in `src/renderer/components/NoteReaderModal.tsx`. Wired `onNoteClick` handler to Notes cell in `TableRow.tsx` and `IdeasTable.tsx`. Managed modal state and rendered modal in `AppLayout.tsx`. Added unit and integration tests in `NoteReaderModal.test.tsx` and `AppLayout.test.tsx`. | ✅ Done |
+| **Phase 7: Polish & Quality Verification** | Verified strict TypeScript checks across all tsconfigs (`tsc --noEmit`), ran all 248 Vitest tests with zero regressions, and confirmed clean production build (`npm run build`). | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 248 tests across 38 test suites (`npm test`):
+     - `NoteReaderModal.test.tsx`: 5 tests (NEW)
+     - `IdeasTable.test.tsx`: 7 tests (+1 test for fixed layout and tooltips)
+     - `EditableCell.test.tsx`: 7 tests (+2 tests for pointer cursor and alignment)
+     - `TableRow.test.tsx`: 14 tests (+4 tests for column alignment, cursor states, and note click)
+     - `AppLayout.test.tsx`: 7 tests (+2 tests for note reader modal integration)
+     - All 33 existing test suites continue passing with 0 regressions.
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit`, `npx tsc -p tsconfig.main.json --noEmit`, and `npx tsc -p tsconfig.renderer.json --noEmit` all pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both Main process (`dist/main/index.js`) and Vite Renderer bundle (`dist/renderer/`) cleanly.
+4. **Constitutional Compliance:**
+   - **Process Separation:** UI logic remains strictly in `src/renderer/`; zero changes to Main, IPC, or SQLite.
+   - **Stack Simplicity:** Zero third-party dependencies added; pure React, Tailwind CSS, and native HTML attributes.
+   - **Data Integrity:** Note text is read-only in the modal reader; audio files and SQLite rows remain untouched.
+   - **Unified Language:** 100% English code, comments, specs, and commit conventions.
+
+---
+
+### 3. Visual Polish: Dark Mode Toolbar Border Refinement
+
+- **Issue Identified:** In dark mode, `<TabBar />` and `<DeleteButton />` rendered with a stark white border (`#e5e7eb`) because Tailwind CSS v3 does not evaluate arbitrary opacity modifiers (e.g., `border-border/80`) on hex-based CSS variables (`var(--color-border)`), causing the utility class to drop and fallback to Tailwind's preflight default `#e5e7eb`.
+- **Resolution:**
+  - Updated `src/renderer/components/TabBar.tsx` container to use standard theme token `border border-border`. In dark mode, this applies `--color-border: #38383a`, creating a dark, cohesive border consistent with the Mode Toggle, Header, and Ideas Table containers.
+  - Updated adjacent `src/renderer/components/DeleteButton.tsx` from `border-border/80` to `border border-border` to maintain toolbar harmony.
+  - Updated `src/renderer/components/NoteReaderModal.tsx` inner note container from `border-border/60` to `border border-border` to avoid white fallback.
+  - Ensured `TableRow.tsx` instruments tag container includes `justify-center` to satisfy row centering requirements.
+- **Verification:** All 248 tests across 38 suites pass; production build succeeds.
