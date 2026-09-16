@@ -1,9 +1,15 @@
+import started from 'electron-squirrel-startup';
 import { app, BrowserWindow, ipcMain, protocol } from 'electron';
 import path from 'path';
 import { getDatabase, closeDatabase } from './db/client';
 import { runMigrations } from './db/migrations';
 import { registerAllHandlers } from './ipc';
 import { AudioStorageService, registerVaultAudioScheme, handleVaultAudioProtocol } from './audio';
+
+// Handle Squirrel installer events on Windows
+if (started) {
+  app.quit();
+}
 
 // Register vault-audio scheme as privileged before app is ready
 registerVaultAudioScheme(protocol);
@@ -14,6 +20,7 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1000,
     height: 700,
+    icon: path.join(app.getAppPath(), 'assets/VaultLogo.png'),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
