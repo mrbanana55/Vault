@@ -38,7 +38,8 @@ module.exports = {
       name: '@electron-forge/maker-dmg',
       config: {
         name: 'Vault',
-        icon: './assets/VaultLogo.icns'
+        icon: './assets/VaultLogo.icns',
+        iconSize: 128
       }
     },
     {

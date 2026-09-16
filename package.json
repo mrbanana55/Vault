@@ -14,7 +14,7 @@
     "start": "npm run build:main && electron .",
     "test": "ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs run",
     "test:watch": "ELECTRON_RUN_AS_NODE=1 electron ./node_modules/vitest/vitest.mjs",
-    "generate:icons": "bash scripts/generate-icns.sh",
+    "generate:icons": "bash scripts/generate-icns.sh && bash scripts/generate-ico.sh",
     "package": "npm run build && electron-forge package",
     "make": "npm run build && electron-forge make",
     "make:mac": "npm run build && electron-forge make --platform=darwin",
