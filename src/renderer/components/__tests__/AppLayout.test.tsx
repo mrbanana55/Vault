@@ -306,4 +306,87 @@ describe('AppLayout', () => {
     expect(screen.queryByTestId('note-reader-modal')).not.toBeInTheDocument();
     expect(screen.getByTestId('cell-input')).toBeInTheDocument();
   });
+
+  it('opens FilterModal, applies filter on Apply click, and filters displayed table rows', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Open filter modal
+    fireEvent.click(screen.getByTestId('filter-button'));
+    expect(screen.getByTestId('filter-modal')).toBeInTheDocument();
+
+    // Type a filter that doesn't match 'Guitar Loop' (BPM 120 vs min 130)
+    fireEvent.change(screen.getByTestId('filter-bpm-min'), { target: { value: '130' } });
+
+    // Click Apply
+    fireEvent.click(screen.getByTestId('filter-apply-button'));
+
+    // Modal closes
+    expect(screen.queryByTestId('filter-modal')).not.toBeInTheDocument();
+
+    // 'Guitar Loop' should be filtered out, showing filtered empty state
+    expect(screen.queryByText('Guitar Loop')).not.toBeInTheDocument();
+    expect(screen.getByText('No matching ideas')).toBeInTheDocument();
+
+    // Clear filters button should be visible
+    expect(screen.getByTestId('clear-filters-button')).toBeInTheDocument();
+  });
+
+  it('clears filter on ClearFiltersButton click, restoring all rows without confirmation', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Apply filter
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.change(screen.getByTestId('filter-key'), { target: { value: 'Z major' } });
+    fireEvent.click(screen.getByTestId('filter-apply-button'));
+
+    expect(screen.queryByText('Guitar Loop')).not.toBeInTheDocument();
+
+    // Click clear button
+    fireEvent.click(screen.getByTestId('clear-filters-button'));
+
+    // Note restored immediately
+    expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filters-button')).not.toBeInTheDocument();
+  });
+
+  it('discards unapplied draft filter changes when dismissing FilterModal', async () => {
+    render(
+      <ThemeProvider>
+        <AppLayout />
+      </ThemeProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    });
+
+    // Open modal, enter draft value, but cancel
+    fireEvent.click(screen.getByTestId('filter-button'));
+    fireEvent.change(screen.getByTestId('filter-authors'), { target: { value: 'Nobody' } });
+    fireEvent.click(screen.getByTestId('filter-cancel-button'));
+
+    // Table still shows note
+    expect(screen.getByText('Guitar Loop')).toBeInTheDocument();
+    expect(screen.queryByTestId('clear-filters-button')).not.toBeInTheDocument();
+
+    // Re-open: draft was discarded
+    fireEvent.click(screen.getByTestId('filter-button'));
+    expect(screen.getByTestId('filter-authors')).toHaveValue('');
+  });
 });

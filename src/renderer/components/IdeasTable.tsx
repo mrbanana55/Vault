@@ -19,6 +19,8 @@ export interface IdeasTableProps {
   onRowSelect?: (noteId: number, index: number, shiftKey: boolean) => void;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
 }
 
 export function IdeasTable({
@@ -34,6 +36,8 @@ export function IdeasTable({
   onNoteClick,
   selectedIds,
   onRowSelect,
+  isFiltered,
+  onClearFilters,
 }: IdeasTableProps) {
   if (loading) {
     return (
@@ -65,7 +69,13 @@ export function IdeasTable({
   }
 
   if (notes.length === 0) {
-    return <EmptyState isArchive={isUsed === 1} />;
+    return (
+      <EmptyState
+        isArchive={isUsed === 1}
+        isFiltered={isFiltered}
+        onClearFilters={onClearFilters}
+      />
+    );
   }
 
   return (

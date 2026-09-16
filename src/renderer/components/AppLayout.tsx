@@ -1,12 +1,17 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type { UpdateAudioNoteInput } from "@shared/types";
 import type { NoteWithInstruments } from "../hooks/useNotes";
 import type { TableMode, EditableField } from "../types/inline-edit";
+import type { IdeaFilterCriteria } from "../types/filters";
+import { INITIAL_FILTER_CRITERIA } from "../types/filters";
 import { Header } from "./Header";
 import { TabBar } from "./TabBar";
 import { ModeToggle } from "./ModeToggle";
 import { DeleteButton } from "./DeleteButton";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { FilterButton } from "./FilterButton";
+import { ClearFiltersButton } from "./ClearFiltersButton";
+import { FilterModal } from "./FilterModal";
 import { NoteReaderModal } from "./NoteReaderModal";
 import { IdeasTable } from "./IdeasTable";
 import { RecordingPanel } from "./RecordingPanel";
@@ -18,6 +23,7 @@ import { useAudioImport } from "../hooks/useAudioImport";
 import { useRowSelection } from "../hooks/useRowSelection";
 import { useAudioPlayer } from "../hooks/useAudioPlayer";
 import { transformFieldValue } from "../lib/field-transforms";
+import { filterIdeas, hasActiveFilters } from "../lib/filter-ideas";
 
 export function AppLayout() {
   const [activeTab, setActiveTab] = useState<0 | 1>(0);
@@ -37,6 +43,12 @@ export function AppLayout() {
   const { notes, loading, error, refetch } = useNotes(activeTab);
   const { currentNote, pause } = useAudioPlayer();
 
+  const [filterCriteria, setFilterCriteria] = useState<IdeaFilterCriteria>(INITIAL_FILTER_CRITERIA);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  const isFiltered = useMemo(() => hasActiveFilters(filterCriteria), [filterCriteria]);
+  const displayedNotes = useMemo(() => filterIdeas(notes, filterCriteria), [notes, filterCriteria]);
+
   const {
     selectedIds,
     selectedCount,
@@ -44,9 +56,18 @@ export function AppLayout() {
     selectAll,
     clearSelection,
   } = useRowSelection({
-    notes,
+    notes: displayedNotes,
     activeTab,
   });
+
+  const handleApplyFilters = useCallback((newCriteria: IdeaFilterCriteria) => {
+    setFilterCriteria(newCriteria);
+    setIsFilterModalOpen(false);
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilterCriteria(INITIAL_FILTER_CRITERIA);
+  }, []);
 
   const handleSave = useCallback(
     async (
@@ -161,6 +182,13 @@ export function AppLayout() {
               selectedCount={selectedCount}
               onClick={() => setIsConfirmOpen(true)}
             />
+            <FilterButton
+              isFiltered={isFiltered}
+              onClick={() => setIsFilterModalOpen(true)}
+            />
+            {isFiltered && (
+              <ClearFiltersButton onClick={handleClearFilters} />
+            )}
           </div>
           <ModeToggle tableMode={tableMode} onModeChange={handleModeChange} />
         </div>
@@ -168,7 +196,7 @@ export function AppLayout() {
           <div className="flex-1 overflow-auto">
             <IdeasTable
               isUsed={activeTab}
-              notes={notes}
+              notes={displayedNotes}
               loading={loading}
               error={error}
               onRefetch={refetch}
@@ -181,6 +209,8 @@ export function AppLayout() {
               onRowSelect={handleRowSelect}
               onSelectAll={selectAll}
               onClearSelection={clearSelection}
+              isFiltered={isFiltered}
+              onClearFilters={handleClearFilters}
             />
           </div>
         </div>
@@ -213,6 +243,12 @@ export function AppLayout() {
         onClose={() =>
           setNoteReaderModal((prev) => ({ ...prev, isOpen: false }))
         }
+      />
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        initialCriteria={filterCriteria}
+        onApply={handleApplyFilters}
+        onClose={() => setIsFilterModalOpen(false)}
       />
     </div>
   );

@@ -827,3 +827,70 @@ All 25 tasks across 7 phases were completed with 100% test pass rate (**248 pass
   - Updated `src/renderer/components/NoteReaderModal.tsx` inner note container from `border-border/60` to `border border-border` to avoid white fallback.
   - Ensured `TableRow.tsx` instruments tag container includes `justify-center` to satisfy row centering requirements.
 - **Verification:** All 248 tests across 38 suites pass; production build succeeds.
+
+---
+
+---
+
+# Session Log — 2026-09-15
+
+## Executive Summary
+
+Today's session specified, planned, implemented, and verified **Spec 013: Filter Ideas Table**. Following strict **Spec-Driven Development (SDD)** and constitutional principles (Stack Simplicity, Process Separation, Data Integrity, Verifiable Tests, Unified Language), we built a rich musical filtering system for the Ideas Table:
+1. **Toolbar Integration**: Placed `<FilterButton />` adjacent to `<DeleteButton />` with tooltip `"Filter ideas"` and active styling when filtering. Added an instant `<ClearFiltersButton />` ('X') with tooltip `"Clear all filters"`, visible only when filters are active, resetting all filters immediately with zero confirmation prompts.
+2. **Filter Ideas Modal**: Created an Apple HIG-styled dialog (`<FilterModal />`) with 5 parameter rows: BPM (range: Min, Max), Key, Authors, Section, and Instruments.
+3. **Multi-Token Comma Matching (AND Logic)**: Authors and Instruments parse comma-separated queries into distinct tokens (`parseFilterTokens`), requiring all specified items to be present on the idea, case-insensitively and order-independently.
+4. **Contextual Input Tooltips**: Every row label and input field in the modal provides a descriptive hover tooltip explaining expected formatting conventions.
+5. **Click-Only Apply & Enter Key Suppression**: Filters are committed exclusively upon clicking the primary "Apply" button. Form submission via the `Enter` key is explicitly suppressed to avoid accidental submits while filling multiple rows.
+6. **Draft Dismissal Cancellation**: Dismissing the modal without clicking "Apply" (via `Escape`, Close `×`, or backdrop click) cancels unapplied draft changes, keeping any active table filter intact.
+7. **Filtered Empty State**: Supported a dedicated empty state in `<EmptyState />` and `<IdeasTable />` when applied criteria yield zero matching ideas, including a reset affordance.
+
+All 23 tasks across 7 phases were completed with 100% test pass rate (**291 passing tests across 42 test suites**, up from 248 tests across 38 suites, +43 new tests).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Clarification & Planning (SDD)
+
+- **Spec 013 Authored:** [`specs/013-filter-ideas-table/spec.md`](specs/013-filter-ideas-table/spec.md) covering 4 prioritized user stories (Filter Modal & Click-Only Apply, Instant Clear via 'X' Button, Contextual Tooltips & Active Indicators, Seamless Modal Interaction & Dismissal Cancellation), 21 functional requirements, and 7 measurable success criteria.
+- **Checklist Validation:** Verified [`specs/013-filter-ideas-table/checklists/requirements.md`](specs/013-filter-ideas-table/checklists/requirements.md) (16/16 checks passing).
+- **Technical Plan & Artifacts:** Authored [`plan.md`](specs/013-filter-ideas-table/plan.md), [`research.md`](specs/013-filter-ideas-table/research.md), [`data-model.md`](specs/013-filter-ideas-table/data-model.md), [`contracts/ui-contracts.md`](specs/013-filter-ideas-table/contracts/ui-contracts.md), [`quickstart.md`](specs/013-filter-ideas-table/quickstart.md), and [`tasks.md`](specs/013-filter-ideas-table/tasks.md).
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Implemented `src/renderer/types/filters.ts` defining `IdeaFilterCriteria`, `INITIAL_FILTER_CRITERIA`, and `FILTER_TOOLTIPS`. Exported via `src/renderer/types/index.ts`. | ✅ Done |
+| **Phase 2: Foundational** | Implemented `src/renderer/lib/filter-ideas.ts` with `parseFilterTokens`, `hasActiveFilters`, `matchesFilterCriteria`, and `filterIdeas`. Updated `<EmptyState />` in `src/renderer/components/EmptyState.tsx`. Added test suites in `filter-ideas.test.ts` (26 tests) and `EmptyState.test.tsx` (4 tests). | ✅ Done |
+| **Phase 3: US1 Filter Modal & Apply (MVP)** | Implemented `<FilterModal />` in `src/renderer/components/FilterModal.tsx` and `<FilterButton />` in `src/renderer/components/FilterButton.tsx`. Updated `<IdeasTable />` and integrated into `<AppLayout />`. Added unit test suites in `FilterModal.test.tsx` (5 tests) and `FilterButton.test.tsx` (5 tests). | ✅ Done |
+| **Phase 4: US2 Clear 'X' Button** | Implemented `<ClearFiltersButton />` in `src/renderer/components/ClearFiltersButton.tsx` and integrated into `<AppLayout />` toolbar. Added unit tests in `ClearFiltersButton.test.tsx` (2 tests). | ✅ Done |
+| **Phase 5: US3 Tooltips & Active Styles** | Verified parameter hover tooltips, active highlight styles on `<FilterButton />`, and tooltip copy. | ✅ Done |
+| **Phase 6: US4 Dismissal Cancellation** | Verified draft reset on modal dismissal and added integration tests in `src/renderer/components/__tests__/AppLayout.test.tsx` (10 tests, +3 new tests). | ✅ Done |
+| **Phase 7: Polish & Verification** | Executed strict type checks across all configs (`tsc --noEmit`), ran all 291 Vitest tests with zero regressions, and confirmed clean production build (`npm run build`). | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 291 tests across 42 test suites (`npm test`):
+     - `filter-ideas.test.ts`: 26 tests (NEW)
+     - `FilterModal.test.tsx`: 5 tests (NEW)
+     - `FilterButton.test.tsx`: 5 tests (NEW)
+     - `ClearFiltersButton.test.tsx`: 2 tests (NEW)
+     - `EmptyState.test.tsx`: 4 tests (+2 tests for filtered state and clear callback)
+     - `AppLayout.test.tsx`: 10 tests (+3 tests for filter application, instant clearing, and draft dismissal)
+     - All 36 existing test suites continue passing with 0 regressions.
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit`, `npx tsc -p tsconfig.main.json --noEmit`, and `npx tsc -p tsconfig.renderer.json --noEmit` all pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both Main process (`dist/main/index.js`) and Vite Renderer bundle (`dist/renderer/`) cleanly.
+4. **Constitutional Compliance:**
+   - **Process Separation:** Filtering executes purely in Renderer memory on enriched note objects; zero changes to Main, IPC, or SQLite.
+   - **Stack Simplicity:** Zero third-party dependencies added; pure React, Tailwind CSS, and SVG icons.
+   - **Data Integrity:** Database rows and physical audio files remain strictly untouched; filtering is a transient view transformation.
+   - **Unified Language:** 100% English code, comments, specs, and commit conventions.
