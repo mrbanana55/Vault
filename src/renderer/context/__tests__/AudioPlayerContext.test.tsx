@@ -21,8 +21,21 @@ const mockNote: NoteWithInstruments = {
 };
 
 function TestConsumer() {
-  const { currentNote, isPlaying, currentTime, duration, error, play, pause, togglePlay, seek } =
-    useAudioPlayer();
+  const {
+    currentNote,
+    isPlaying,
+    currentTime,
+    duration,
+    outputVolume,
+    setOutputVolume,
+    error,
+    play,
+    pause,
+    stopPlayback,
+    togglePlay,
+    seek,
+    getOutputLevels,
+  } = useAudioPlayer();
 
   return (
     <div>
@@ -30,6 +43,7 @@ function TestConsumer() {
       <span data-testid="is-playing">{isPlaying ? 'yes' : 'no'}</span>
       <span data-testid="current-time">{currentTime}</span>
       <span data-testid="duration">{duration}</span>
+      <span data-testid="output-volume">{outputVolume}</span>
       <span data-testid="error-message">{error || 'none'}</span>
       <button data-testid="btn-play" onClick={() => play(mockNote)}>
         Play
@@ -43,6 +57,18 @@ function TestConsumer() {
       <button data-testid="btn-pause" onClick={pause}>
         Pause
       </button>
+      <button data-testid="btn-stop" onClick={stopPlayback}>
+        Stop
+      </button>
+      <button data-testid="btn-vol-down" onClick={() => setOutputVolume(0.5)}>
+        Set Vol 0.5
+      </button>
+      <button data-testid="btn-vol-boost" onClick={() => setOutputVolume(1.8)}>
+        Set Vol 1.8
+      </button>
+      <button data-testid="btn-get-levels" onClick={() => getOutputLevels()}>
+        Get Levels
+      </button>
       <button data-testid="btn-toggle" onClick={() => togglePlay(mockNote)}>
         Toggle
       </button>
@@ -52,6 +78,7 @@ function TestConsumer() {
     </div>
   );
 }
+
 
 describe('AudioPlayerContext', () => {
   let playSpy: ReturnType<typeof vi.spyOn>;
@@ -224,4 +251,38 @@ describe('AudioPlayerContext', () => {
     expect(screen.getByTestId('duration').textContent).toBe('64.2');
     expect(updateSpy).toHaveBeenCalledWith({ id: 99, duration_seconds: 64.2 });
   });
+
+  it('updates output volume and stops playback cleanly', async () => {
+    render(
+      <AudioPlayerProvider>
+        <TestConsumer />
+      </AudioPlayerProvider>
+    );
+
+    expect(screen.getByTestId('output-volume').textContent).toBe('1');
+
+    await act(async () => {
+      screen.getByTestId('btn-vol-down').click();
+    });
+
+    expect(screen.getByTestId('output-volume').textContent).toBe('0.5');
+
+    await act(async () => {
+      screen.getByTestId('btn-vol-boost').click();
+    });
+
+    expect(screen.getByTestId('output-volume').textContent).toBe('1.8');
+
+    await act(async () => {
+      screen.getByTestId('btn-play').click();
+    });
+
+    await act(async () => {
+      screen.getByTestId('btn-stop').click();
+    });
+
+    expect(screen.getByTestId('is-playing').textContent).toBe('no');
+    expect(screen.getByTestId('current-time').textContent).toBe('0');
+  });
 });
+

@@ -63,6 +63,7 @@ describe('AudioRecorder (US1)', () => {
     mockAudioContext = {
       state: 'running',
       sampleRate: 44100,
+      destination: { disconnect: vi.fn() } as unknown as AudioDestinationNode,
       createMediaStreamSource: vi.fn().mockReturnValue(mockSourceNode),
       createGain: vi.fn().mockReturnValue(mockGainNode),
       createAnalyser: vi.fn()
@@ -144,7 +145,12 @@ describe('AudioRecorder (US1)', () => {
 
     await recorder.startRecording('external-usb-device-id');
     expect(getMediaStreamMock).toHaveBeenCalledWith({
-      audio: { deviceId: { exact: 'external-usb-device-id' } },
+      audio: {
+        deviceId: { exact: 'external-usb-device-id' },
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false,
+      },
       video: false,
     });
   });
@@ -244,5 +250,48 @@ describe('AudioRecorder (US1)', () => {
     expect(levels.postGainRms).toBeGreaterThanOrEqual(0);
     expect(levels.postGainPeak).toBeGreaterThanOrEqual(0);
     expect(typeof levels.isClipping).toBe('boolean');
+  });
+
+  it('toggles self-monitoring in idle state and routes to audio destination', async () => {
+    const recorder = new AudioRecorder({
+      getMediaStream: async () => mockStream,
+      createAudioContext: () => mockAudioContext,
+      createMediaRecorder: () => mockMediaRecorder,
+    });
+
+    expect(recorder.isMonitoringEnabled()).toBe(false);
+
+    await recorder.setMonitoring(true);
+    expect(recorder.isMonitoringEnabled()).toBe(true);
+    expect(recorder.getState()).toBe('idle');
+    expect(mockGainNode.connect).toHaveBeenCalled();
+
+    await recorder.setMonitoring(false);
+    expect(recorder.isMonitoringEnabled()).toBe(false);
+    expect(recorder.getState()).toBe('idle');
+  });
+
+  it('starts recording seamlessly while monitoring is already active and retains monitoring upon stop', async () => {
+    const recorder = new AudioRecorder({
+      getMediaStream: async () => mockStream,
+      createAudioContext: () => mockAudioContext,
+      createMediaRecorder: () => mockMediaRecorder,
+    });
+
+    await recorder.setMonitoring(true);
+    expect(recorder.isMonitoringEnabled()).toBe(true);
+
+    await recorder.startRecording();
+    expect(recorder.getState()).toBe('recording');
+    expect(mockMediaRecorder.start).toHaveBeenCalled();
+
+    const result = await recorder.stopRecording();
+    expect(result.durationSeconds).toBeGreaterThan(0);
+    expect(recorder.getState()).toBe('idle');
+    expect(recorder.isMonitoringEnabled()).toBe(true);
+
+    // Turn off monitoring
+    await recorder.setMonitoring(false);
+    expect(recorder.isMonitoringEnabled()).toBe(false);
   });
 });

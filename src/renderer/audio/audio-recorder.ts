@@ -17,6 +17,10 @@ export interface RecordingResult {
 export class AudioRecorder {
   private state: RecordingState = 'idle';
   private inputGain: number = 1.0;
+  private isMonitoring: boolean = false;
+  private monitoringGainNode: GainNode | null = null;
+  private currentDeviceId?: string;
+  private currentChannelMode?: 'stereo' | 'mono-ch1' | 'mono-ch2';
   private audioContext: AudioContext | null = null;
   private mediaStream: MediaStream | null = null;
   private sourceNode: MediaStreamAudioSourceNode | null = null;
@@ -72,18 +76,92 @@ export class AudioRecorder {
     }
   }
 
+  /** Returns whether self-monitoring is currently enabled. */
+  isMonitoringEnabled(): boolean {
+    return this.isMonitoring;
+  }
+
   /**
-   * Starts an audio recording session from the specified or default input device.
-   *
-   * @param deviceId Optional specific deviceId to capture from.
+   * Enables or disables self-monitoring (routing input to audio output).
+   * When enabled in idle state, starts capture stream and routes to destination.
+   * When disabled in idle state, tears down stream to release microphone.
    */
-  async startRecording(deviceId?: string): Promise<void> {
-    if (this.state !== 'idle') {
-      throw new Error(`Cannot start recording from state: ${this.state}`);
+  async setMonitoring(
+    enabled: boolean,
+    deviceId?: string,
+    channelMode?: 'stereo' | 'mono-ch1' | 'mono-ch2',
+    outputDeviceId?: string
+  ): Promise<void> {
+    this.isMonitoring = enabled;
+
+    if (enabled) {
+      if (
+        this.state === 'idle' &&
+        this.mediaStream &&
+        ((deviceId && deviceId !== this.currentDeviceId) ||
+          (channelMode && channelMode !== this.currentChannelMode))
+      ) {
+        this.cleanup();
+      }
+      this.currentDeviceId = deviceId;
+      this.currentChannelMode = channelMode;
+
+      if (!this.audioContext || !this.mediaStream || !this.gainNode) {
+        await this.initCaptureGraph(deviceId, channelMode, outputDeviceId);
+      }
+      this.attachMonitoringNode();
+    } else {
+      this.detachMonitoringNode();
+      if (this.state === 'idle') {
+        this.cleanup();
+      }
+    }
+  }
+
+  private attachMonitoringNode(): void {
+    if (!this.audioContext || !this.gainNode) return;
+    if (!this.monitoringGainNode) {
+      this.monitoringGainNode = this.audioContext.createGain();
+      this.monitoringGainNode.gain.value = 1.0;
+      this.gainNode.connect(this.monitoringGainNode);
+      if (this.audioContext.destination) {
+        this.monitoringGainNode.connect(this.audioContext.destination);
+      }
+    }
+  }
+
+  private detachMonitoringNode(): void {
+    if (this.monitoringGainNode) {
+      try {
+        this.monitoringGainNode.disconnect();
+      } catch {
+        // Ignore if already disconnected
+      }
+      this.monitoringGainNode = null;
+    }
+  }
+
+  private async initCaptureGraph(
+    deviceId?: string,
+    channelMode?: 'stereo' | 'mono-ch1' | 'mono-ch2',
+    outputDeviceId?: string
+  ): Promise<void> {
+    if (this.mediaStream && this.audioContext && this.gainNode) {
+      return;
+    }
+
+    const audioConstraints: MediaTrackConstraints = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    };
+
+    if (deviceId && deviceId !== 'default') {
+      audioConstraints.deviceId = { exact: deviceId };
     }
 
     const constraints: MediaStreamConstraints = {
-      audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+      audio: audioConstraints,
       video: false,
     };
 
@@ -93,26 +171,97 @@ export class AudioRecorder {
       await this.audioContext.resume();
     }
 
+    if (
+      outputDeviceId &&
+      outputDeviceId !== 'default' &&
+      typeof (this.audioContext as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId === 'function'
+    ) {
+      try {
+        await (this.audioContext as unknown as { setSinkId: (id: string) => Promise<void> }).setSinkId(outputDeviceId);
+      } catch {
+        // Fallback to default output
+      }
+    }
+
     // Set up Web Audio graph
     this.sourceNode = this.audioContext.createMediaStreamSource(this.mediaStream);
     this.gainNode = this.audioContext.createGain();
     this.gainNode.gain.value = this.inputGain;
 
     this.preGainAnalyser = this.audioContext.createAnalyser();
-    this.preGainAnalyser.fftSize = 256;
+    this.preGainAnalyser.fftSize = 1024;
 
     this.postGainAnalyser = this.audioContext.createAnalyser();
-    this.postGainAnalyser.fftSize = 256;
+    this.postGainAnalyser.fftSize = 1024;
 
-    this.destinationNode = this.audioContext.createMediaStreamDestination();
+    // Channel routing if mono channel requested and splitter supported
+    if (
+      (channelMode === 'mono-ch1' || channelMode === 'mono-ch2') &&
+      typeof this.audioContext.createChannelSplitter === 'function'
+    ) {
+      try {
+        const splitter = this.audioContext.createChannelSplitter(2);
+        this.sourceNode.connect(splitter);
+        const chIndex = channelMode === 'mono-ch2' ? 1 : 0;
+        splitter.connect(this.preGainAnalyser, chIndex);
+        splitter.connect(this.gainNode, chIndex);
+      } catch {
+        this.sourceNode.connect(this.preGainAnalyser);
+        this.sourceNode.connect(this.gainNode);
+      }
+    } else {
+      this.sourceNode.connect(this.preGainAnalyser);
+      this.sourceNode.connect(this.gainNode);
+    }
 
-    // Connect: source -> pre-gain analyser
-    this.sourceNode.connect(this.preGainAnalyser);
-
-    // Connect: source -> gain -> post-gain analyser & destination
-    this.sourceNode.connect(this.gainNode);
     this.gainNode.connect(this.postGainAnalyser);
-    this.gainNode.connect(this.destinationNode);
+
+    // Listen for hardware disconnection
+    const audioTracks = this.mediaStream.getAudioTracks
+      ? this.mediaStream.getAudioTracks()
+      : this.mediaStream.getTracks();
+    const audioTrack = audioTracks[0];
+    if (audioTrack) {
+      this.onDeviceDisconnectHandler = () => {
+        if (this.state === 'recording' || this.state === 'paused') {
+          this.stopRecording()
+            .then((result) => {
+              if (this.onRecordingInterruptedFn) {
+                this.onRecordingInterruptedFn(result);
+              }
+            })
+            .catch(() => {});
+        } else if (this.state === 'idle') {
+          this.setMonitoring(false).catch(() => {});
+        }
+      };
+      audioTrack.addEventListener('ended', this.onDeviceDisconnectHandler);
+    }
+  }
+
+  /**
+   * Starts an audio recording session from the specified or default input device.
+   *
+   * @param deviceId Optional specific deviceId to capture from.
+   */
+  async startRecording(
+    deviceId?: string,
+    channelMode?: 'stereo' | 'mono-ch1' | 'mono-ch2'
+  ): Promise<void> {
+    if (this.state !== 'idle') {
+      throw new Error(`Cannot start recording from state: ${this.state}`);
+    }
+
+    if (!this.audioContext || !this.mediaStream || !this.gainNode) {
+      await this.initCaptureGraph(deviceId, channelMode);
+    }
+
+    if (this.isMonitoring) {
+      this.attachMonitoringNode();
+    }
+
+    this.destinationNode = this.audioContext!.createMediaStreamDestination();
+    this.gainNode!.connect(this.destinationNode);
 
     // Initialize MediaRecorder from destination stream
     this.mediaRecorder = this.createMediaRecorderFn(this.destinationNode.stream);
@@ -124,27 +273,6 @@ export class AudioRecorder {
         this.recordedChunks.push(blobEvent.data);
       }
     });
-
-    // Listen for hardware disconnection mid-recording
-    const audioTracks = this.mediaStream.getAudioTracks
-      ? this.mediaStream.getAudioTracks()
-      : this.mediaStream.getTracks();
-    const audioTrack = audioTracks[0];
-    if (audioTrack) {
-      this.onDeviceDisconnectHandler = () => {
-        if (this.state === 'recording' || this.state === 'paused') {
-          // Gracefully stop and salvage partial recording
-          this.stopRecording()
-            .then((result) => {
-              if (this.onRecordingInterruptedFn) {
-                this.onRecordingInterruptedFn(result);
-              }
-            })
-            .catch(() => {});
-        }
-      };
-      audioTrack.addEventListener('ended', this.onDeviceDisconnectHandler);
-    }
 
     this.mediaRecorder.start();
     this.startTime = Date.now();
@@ -236,8 +364,22 @@ export class AudioRecorder {
       });
     }
 
-    this.cleanup();
-    this.state = 'idle';
+    if (this.isMonitoring) {
+      if (this.destinationNode) {
+        try {
+          this.destinationNode.disconnect();
+        } catch {
+          // Ignore
+        }
+        this.destinationNode = null;
+      }
+      this.mediaRecorder = null;
+      this.recordedChunks = [];
+      this.state = 'idle';
+    } else {
+      this.cleanup();
+      this.state = 'idle';
+    }
 
     return {
       arrayBuffer: wavBuffer,
@@ -271,6 +413,8 @@ export class AudioRecorder {
 
   /** Cleans up audio nodes, streams, and tracks. */
   private cleanup(): void {
+    this.detachMonitoringNode();
+
     if (this.mediaStream) {
       const audioTracks = this.mediaStream.getAudioTracks
         ? this.mediaStream.getAudioTracks()

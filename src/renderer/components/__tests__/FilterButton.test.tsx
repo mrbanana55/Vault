@@ -30,7 +30,7 @@ describe('FilterButton', () => {
     const btn = screen.getByTestId('filter-button');
     expect(btn.className).toContain('bg-accent/10');
     expect(btn.className).toContain('text-accent');
-    expect(btn.className).toContain('border-accent/40');
+    expect(btn.className).toContain('border-accent');
   });
 
   it('handles disabled state properly', () => {

@@ -49,3 +49,26 @@ export function calculateAudioLevels(
     isClipping,
   };
 }
+
+/**
+ * Converts a linear amplitude value (0.0 to 1.0) to a decibel-scaled percentage (0 to 100)
+ * matching standard DAW logarithmic volume meters.
+ *
+ * @param linear Amplitude from 0.0 to 1.0.
+ * @param minDb Minimum visible dBFS threshold (default: -48 dB).
+ * @returns Logarithmic percentage between 0 and 100.
+ */
+export function amplitudeToDbPercent(linear: number, minDb: number = -48): number {
+  if (linear <= 0.0001) {
+    return 0;
+  }
+  const db = 20 * Math.log10(linear);
+  if (db <= minDb) {
+    return 0;
+  }
+  if (db >= 0) {
+    return 100;
+  }
+  return ((db - minDb) / -minDb) * 100;
+}
+

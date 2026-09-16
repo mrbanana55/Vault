@@ -215,7 +215,7 @@ export function AppLayout() {
           </div>
         </div>
       </main>
-      <RecordingPanel />
+      <RecordingPanel onNoteCreated={refetch} />
       <DragDropOverlay isDragging={isDragging} />
       <CircularProgressModal
         isOpen={batchState.isActive}

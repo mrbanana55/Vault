@@ -84,4 +84,61 @@ describe('Device Manager (US2)', () => {
     clearSelectedDeviceId(storageAdapter);
     expect(getSelectedDeviceId(storageAdapter)).toBeNull();
   });
+
+  it('filters only audiooutput devices and formats them as AudioDeviceOption', async () => {
+    const mockDevices: Partial<MediaDeviceInfo>[] = [
+      { deviceId: 'mic-1', kind: 'audioinput', label: 'Mic' },
+      { deviceId: 'default', kind: 'audiooutput', label: 'Default - Headphones' },
+      { deviceId: 'speaker-2', kind: 'audiooutput', label: 'External Monitor' },
+    ];
+
+    const enumerateFn = vi.fn().mockResolvedValue(mockDevices as MediaDeviceInfo[]);
+    const outputs = await import('../device-manager').then((m) =>
+      m.getAudioOutputDevices(enumerateFn)
+    );
+
+    expect(outputs).toHaveLength(2);
+    expect(outputs[0].deviceId).toBe('default');
+    expect(outputs[0].isDefault).toBe(true);
+    expect(outputs[0].kind).toBe('audiooutput');
+    expect(outputs[1].deviceId).toBe('speaker-2');
+    expect(outputs[1].isDefault).toBe(false);
+  });
+
+  it('persists and retrieves output deviceId, channel mode, input gain, and output volume', async () => {
+    const {
+      getSelectedOutputDeviceId,
+      setSelectedOutputDeviceId,
+      clearSelectedOutputDeviceId,
+      getChannelMode,
+      setChannelMode,
+      getStoredInputGain,
+      setStoredInputGain,
+      getStoredOutputVolume,
+      setStoredOutputVolume,
+    } = await import('../device-manager');
+
+    expect(getSelectedOutputDeviceId(storageAdapter)).toBeNull();
+    setSelectedOutputDeviceId('speaker-hdmi', storageAdapter);
+    expect(getSelectedOutputDeviceId(storageAdapter)).toBe('speaker-hdmi');
+    clearSelectedOutputDeviceId(storageAdapter);
+    expect(getSelectedOutputDeviceId(storageAdapter)).toBeNull();
+
+    expect(getChannelMode(storageAdapter)).toBe('stereo');
+    setChannelMode('mono-ch1', storageAdapter);
+    expect(getChannelMode(storageAdapter)).toBe('mono-ch1');
+
+    expect(getStoredInputGain(storageAdapter)).toBe(1.0);
+    setStoredInputGain(1.4, storageAdapter);
+    expect(getStoredInputGain(storageAdapter)).toBe(1.4);
+
+    expect(getStoredOutputVolume(storageAdapter)).toBe(1.0);
+    setStoredOutputVolume(0.75, storageAdapter);
+    expect(getStoredOutputVolume(storageAdapter)).toBe(0.75);
+    setStoredOutputVolume(1.8, storageAdapter);
+    expect(getStoredOutputVolume(storageAdapter)).toBe(1.8);
+    setStoredOutputVolume(2.5, storageAdapter);
+    expect(getStoredOutputVolume(storageAdapter)).toBe(2.0);
+  });
 });
+

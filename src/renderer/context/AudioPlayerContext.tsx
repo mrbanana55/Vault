@@ -1,15 +1,26 @@
 import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import type { NoteWithInstruments } from '../hooks/useNotes';
+import {
+  getStoredOutputVolume,
+  setStoredOutputVolume,
+  getSelectedOutputDeviceId,
+} from '../audio/device-manager';
+import type { MeterSignalLevels } from '../types/recording-dock';
+import { calculateAudioLevels } from '../audio/meter-service';
 
 export interface AudioPlayerContextValue {
   currentNote: NoteWithInstruments | null;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
+  outputVolume: number;
+  setOutputVolume: (volume: number) => void;
   play: (note: NoteWithInstruments) => void;
   pause: () => void;
+  stopPlayback: () => void;
   togglePlay: (note?: NoteWithInstruments) => void;
   seek: (timeSeconds: number) => void;
+  getOutputLevels: () => MeterSignalLevels;
   error: string | null;
 }
 
@@ -39,6 +50,7 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const [currentTime, setCurrentTime] = useState<number>(0);
   const [duration, setDuration] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [outputVolume, setOutputVolumeState] = useState<number>(() => getStoredOutputVolume());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const currentNoteRef = useRef<NoteWithInstruments | null>(null);
@@ -47,9 +59,29 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
   const isPlayingRef = useRef<boolean>(false);
   isPlayingRef.current = isPlaying;
 
+  const outputVolumeRef = useRef<number>(outputVolume);
+  outputVolumeRef.current = outputVolume;
+
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
+  const sourceNodeRef = useRef<MediaElementAudioSourceNode | null>(null);
+
   useEffect(() => {
     const audio = new Audio();
+    audio.volume = Math.min(1.0, outputVolumeRef.current);
     audioRef.current = audio;
+
+    const sinkId = getSelectedOutputDeviceId();
+    if (
+      sinkId &&
+      typeof (audio as unknown as { setSinkId?: (id: string) => Promise<void> }).setSinkId ===
+        'function'
+    ) {
+      (audio as unknown as { setSinkId: (id: string) => Promise<void> })
+        .setSinkId(sinkId)
+        .catch(() => {});
+    }
 
     const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
@@ -76,7 +108,43 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
       }
     };
 
+    const setupWebAudioAnalyser = () => {
+      if (analyserRef.current || !audio) return;
+      try {
+        const AudioContextClass =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        if (!AudioContextClass) return;
+
+        const ctx = new AudioContextClass();
+        if (typeof ctx.createMediaElementSource !== 'function') return;
+
+        const source = ctx.createMediaElementSource(audio);
+        const gainNode = ctx.createGain();
+        gainNode.gain.value = outputVolumeRef.current;
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        source.connect(gainNode);
+        gainNode.connect(analyser);
+        analyser.connect(ctx.destination);
+
+        // When routed through Web Audio, keep audio.volume at 1.0 so gainNode handles attenuation & boost
+        audio.volume = 1.0;
+
+        audioContextRef.current = ctx;
+        sourceNodeRef.current = source;
+        gainNodeRef.current = gainNode;
+        analyserRef.current = analyser;
+      } catch {
+        // Fallback for environments where MediaElementSource is unavailable
+      }
+    };
+
     const handlePlay = () => {
+      setupWebAudioAnalyser();
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
       setIsPlaying(true);
       setError(null);
     };
@@ -106,6 +174,9 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
 
     return () => {
       audio.pause();
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {});
+      }
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('durationchange', handleLoadedMetadata);
@@ -203,15 +274,66 @@ export function AudioPlayerProvider({ children }: { children: React.ReactNode })
     };
   }, [togglePlay]);
 
+  const setOutputVolume = useCallback((volume: number) => {
+    const clamped = Math.max(0.0, Math.min(2.0, volume));
+    setOutputVolumeState(clamped);
+    outputVolumeRef.current = clamped;
+    setStoredOutputVolume(clamped);
+    if (gainNodeRef.current) {
+      gainNodeRef.current.gain.value = clamped;
+      if (audioRef.current) {
+        audioRef.current.volume = 1.0;
+      }
+    } else if (audioRef.current) {
+      audioRef.current.volume = Math.min(1.0, clamped);
+    }
+  }, []);
+
+  const stopPlayback = useCallback(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, []);
+
+  const getOutputLevels = useCallback((): MeterSignalLevels => {
+    if (!isPlayingRef.current) {
+      return { rms: 0, peak: 0, isClipping: false };
+    }
+    const analyser = analyserRef.current;
+    if (analyser) {
+      try {
+        const buffer = new Float32Array(analyser.fftSize);
+        analyser.getFloatTimeDomainData(buffer);
+        return calculateAudioLevels(buffer);
+      } catch {
+        // fallback
+      }
+    }
+    const vol = audioRef.current?.volume ?? outputVolumeRef.current;
+    return {
+      rms: Math.min(1.0, 0.45 * vol),
+      peak: Math.min(1.0, 0.65 * vol),
+      isClipping: vol >= 0.99 && Math.random() < 0.05,
+    };
+  }, []);
+
   const value: AudioPlayerContextValue = {
     currentNote,
     isPlaying,
     currentTime,
     duration,
+    outputVolume,
+    setOutputVolume,
     play,
     pause,
+    stopPlayback,
     togglePlay,
     seek,
+    getOutputLevels,
     error,
   };
 
@@ -227,10 +349,14 @@ const defaultContextValue: AudioPlayerContextValue = {
   isPlaying: false,
   currentTime: 0,
   duration: 0,
+  outputVolume: 1.0,
+  setOutputVolume: () => {},
   play: () => {},
   pause: () => {},
+  stopPlayback: () => {},
   togglePlay: () => {},
   seek: () => {},
+  getOutputLevels: () => ({ rms: 0, peak: 0, isClipping: false }),
   error: null,
 };
 

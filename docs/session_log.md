@@ -894,3 +894,116 @@ All 23 tasks across 7 phases were completed with 100% test pass rate (**291 pass
    - **Stack Simplicity:** Zero third-party dependencies added; pure React, Tailwind CSS, and SVG icons.
    - **Data Integrity:** Database rows and physical audio files remain strictly untouched; filtering is a transient view transformation.
    - **Unified Language:** 100% English code, comments, specs, and commit conventions.
+
+---
+
+---
+
+# Session Log — 2026-09-16
+
+## Executive Summary
+
+Today's session specified, planned, implemented, and verified **Spec 014: Bottom Recording Dock and Audio Settings**. Following strict **Spec-Driven Development (SDD)** and constitutional principles (Stack Simplicity, Process Separation, Data Integrity, Verifiable Tests, Unified Language), we transformed the bottom dock into a studio-grade audio recording deck:
+1. **Dock Transport & Morphing Button**: Centered record button rendered as an Apple HIG-styled red circle when idle that morphs into a red square during recording, with an adjacent elapsed timer counting upwards from `00:00`.
+2. **Dual Metering & Rotary Knobs**:
+   - **Left Section**: Real-time input volume meter (RMS and peak bars with 500ms hold clipping LED indicator) and rotary input gain knob (0% to 200%, default 100%).
+   - **Right Section**: Real-time master output volume meter and rotary volume knob (0% to 100%, default 100%) controlling playback amplitude via `AudioPlayerContext`.
+   - **Tactile SVG Rotary Controls**: Full pointer drag, mouse wheel, double-click reset to default, and ARIA slider accessibility.
+3. **Post-Recording Metadata Modal (`<SaveIdeaModal />`)**:
+   - Automatically opens upon stopping a recording.
+   - **Take Safeguards**: Backdrop clicks and <kbd>Escape</kbd> dismissal are disabled to prevent accidental take loss.
+   - **Default Monotonic Title**: Title placeholder indicates `"Idea-XX"`; leaving it blank automatically assigns the next sequential idea title via SQLite's atomic counter.
+   - **Metadata Capture**: Key, BPM, Authors, Section, Instruments, and Notes.
+   - **Explicit Discard Safeguard**: Clicking "Discard" requires an explicit confirmation ("Confirm Discard" / "Keep") before purging the audio buffer.
+4. **Audio Hardware Settings Modal (`<AudioSettingsModal />`)**:
+   - Accessed via a dock gear icon.
+   - Allows selecting active Input Device, Output Device, and Channel Input mode (`Stereo`, `Mono Channel 1`, `Mono Channel 2`).
+   - Preferences persist in `localStorage` across restarts.
+5. **Acoustic Bleed Prevention**: Active audio playback automatically stops when recording initiates.
+
+All 31 tasks across 7 phases were completed with 100% test pass rate (**318 passing tests across 48 test suites**, up from 291 tests across 42 suites, +27 new tests).
+
+---
+
+## What Was Completed
+
+### 1. Specification, Clarification & Planning (SDD)
+
+- **Spec 014 Authored:** [`specs/014-recording-dock/spec.md`](specs/014-recording-dock/spec.md) covering 4 prioritized user stories, 21 functional requirements, and 7 measurable success criteria.
+- **Clarification Session:** Resolved Option A (backdrop clicks and <kbd>Escape</kbd> dismissal disabled on `<SaveIdeaModal />` to safeguard audio takes; active playback halts when recording begins).
+- **Checklist Validation:** Verified [`specs/014-recording-dock/checklists/requirements.md`](specs/014-recording-dock/checklists/requirements.md) (16/16 checks passing).
+- **Technical Plan & Artifacts:** Authored [`plan.md`](specs/014-recording-dock/plan.md), [`research.md`](specs/014-recording-dock/research.md), [`data-model.md`](specs/014-recording-dock/data-model.md), [`contracts/recording-dock-contract.md`](specs/014-recording-dock/contracts/recording-dock-contract.md), [`quickstart.md`](specs/014-recording-dock/quickstart.md), and [`tasks.md`](specs/014-recording-dock/tasks.md).
+
+---
+
+### 2. Implementation by Phases
+
+| Phase | Description & Artifacts | Status |
+|---|---|---|
+| **Phase 1: Setup** | Implemented `src/renderer/types/recording-dock.ts` defining `DockRecordingState`, `AudioHardwareSettings`, `ChannelMode`, `MeterSignalLevels`, `PostRecordingIdeaInput`. Re-exported in `src/renderer/types/index.ts`. | ✅ Done |
+| **Phase 2: Foundational** | Extended `src/renderer/audio/device-manager.ts` with output device enumeration, channel mode selection, and gain/volume persistence. Extended `src/renderer/context/AudioPlayerContext.tsx` with master output volume control, `stopPlayback()`, and output analyser node. Added unit tests in `device-manager.test.ts` (6 tests) and `AudioPlayerContext.test.tsx` (9 tests). | ✅ Done |
+| **Phase 3: US1 Record & Modal (MVP)** | Implemented `<SaveIdeaModal />` in `src/renderer/components/SaveIdeaModal.tsx`, `useAudioRecordingDock` hook in `src/renderer/hooks/useAudioRecordingDock.ts`, morphing record button and elapsed timer in `src/renderer/components/RecordingPanel.tsx`, and integrated into `<AppLayout />`. Added unit test suites in `SaveIdeaModal.test.tsx` (5 tests), `useAudioRecordingDock.test.ts` (4 tests), and `RecordingPanel.test.tsx` (4 tests). | ✅ Done |
+| **Phase 4: US2 Dual Metering & Knobs** | Implemented `<RotaryKnob />` in `src/renderer/components/RotaryKnob.tsx` with SVG circular arc, pointer drag, wheel, and reset. Implemented `<VolumeMeter />` in `src/renderer/components/VolumeMeter.tsx` with RMS, peak, and clipping LED indicator. Integrated into dock with RAF polling. Added unit tests in `RotaryKnob.test.tsx` (5 tests) and `VolumeMeter.test.tsx` (2 tests). | ✅ Done |
+| **Phase 5: US3 Hardware Settings & Channels** | Implemented `<AudioSettingsModal />` in `src/renderer/components/AudioSettingsModal.tsx` and settings gear icon. Extended `AudioRecorder` in `src/renderer/audio/audio-recorder.ts` with `ChannelSplitterNode` routing for mono channel capture. Added unit tests in `AudioSettingsModal.test.tsx` (5 tests). | ✅ Done |
+| **Phase 6: US4 Discard Safeguard** | Implemented inline discard confirmation banner in `<SaveIdeaModal />` and buffer purge in `useAudioRecordingDock.ts`. Verified in `SaveIdeaModal.test.tsx`. | ✅ Done |
+| **Phase 7: Polish & Verification** | Ran strict type checks across all configs (`tsc --noEmit`), ran all 318 Vitest tests with zero regressions, and confirmed clean production build (`npm run build`). | ✅ Done |
+
+---
+
+## Verification & Quality Metrics
+
+1. **Automated Tests:**
+   - **Total Passing Tests:** 318 tests across 48 test suites (`npm test`):
+     - `SaveIdeaModal.test.tsx`: 5 tests (NEW)
+     - `AudioSettingsModal.test.tsx`: 5 tests (NEW)
+     - `RecordingPanel.test.tsx`: 4 tests (NEW)
+     - `RotaryKnob.test.tsx`: 5 tests (NEW)
+     - `VolumeMeter.test.tsx`: 2 tests (NEW)
+     - `useAudioRecordingDock.test.ts`: 4 tests (NEW)
+     - `device-manager.test.ts`: 6 tests (+2 tests for output devices and channel mode)
+     - `AudioPlayerContext.test.tsx`: 9 tests (+1 test for volume and stopPlayback coordination)
+     - All 40 existing test suites continue passing with 0 regressions.
+2. **TypeScript Strict Type Check:**
+   - `npx tsc --noEmit`, `npx tsc -p tsconfig.main.json --noEmit`, and `npx tsc -p tsconfig.renderer.json --noEmit` all pass with **0 errors**.
+   - Zero usage of `any`.
+3. **Build Verification:**
+   - `npm run build` compiles both Main process (`dist/main/index.js`) and Vite Renderer bundle (`dist/renderer/`) cleanly in 533ms.
+4. **Constitutional Compliance:**
+   - **Process Separation:** Recording capture and metering execute strictly in Web Audio in the Renderer; file persistence delegates securely via IPC to `AudioStorageService` in Main.
+   - **Stack Simplicity:** Zero third-party audio or UI dependencies added; pure Web Audio API, React 19, Tailwind CSS v3, and SVG graphics.
+   - **Data Integrity:** Recorded takes are protected against accidental modal dismissal; blank titles reliably receive sequential monotonic IDs (`idea-XX`) from SQLite.
+   - **Unified Language:** 100% English code, comments, specs, and commit conventions.
+
+---
+
+### 3. Recording Dock Adjustments (Monitoring & Horizontal Meters)
+
+- **Self-Monitoring Button**: Added a dedicated headphones icon toggle button on the far left of the dock. In `AudioRecorder`, `setMonitoring(enabled)` creates a dedicated `monitoringGainNode` connected to `audioContext.destination`, allowing real-time software pass-through to headphones or speakers. Real-time microphone levels animate the input meter in idle mode when monitoring is active, and stream connections are held across take stops to avoid cutting off mic audio between takes.
+- **Horizontal & Larger Volume Meters**: Updated [`<VolumeMeter />`](src/renderer/components/VolumeMeter.tsx) to default to horizontal orientation with dimensions 130px width × 14px height. Features left-to-right gradient RMS fill, overlaid peak notch, and right-aligned 0 dB clipping LED indicator.
+- **Dock Element Order**: Arranged elements strictly in requested left-to-right sequence:
+  1. `monitoring` (`btn-toggle-monitoring`, headphones icon)
+  2. `input knob` (`GAIN` rotary knob)
+  3. `horizontal volume input` (`IN` meter)
+  4. `record button` (morphing button + elapsed timer)
+  5. `horizontal volume output` (`OUT` meter)
+  6. `output knob` (`VOL` rotary knob)
+  7. `settings` (`btn-audio-settings`, gear icon)
+
+---
+
+### 4. Audio Quality, Meter Responsiveness, and Output Knob Range Adjustment
+
+- **Audio Gate Fix (VoIP Processing Removal)**:
+  - Eliminated the gating/muffling effect on microphone capture by explicitly disabling Chromium's default speech preprocessing (`echoCancellation: false`, `noiseSuppression: false`, `autoGainControl: false`). Audio now captures transparently across acoustic instruments and vocals without aggressive clipping or gating.
+- **Meter Responsiveness & Accuracy**:
+  - Replaced linear scaling with logarithmic dBFS mapping (`amplitudeToDbPercent`) using a standard $-48\text{ dBFS}$ floor for realistic audio dynamics.
+  - Eliminated CSS transition latency (`transition-all duration-75`) for instantaneous UI updates.
+  - Added instant-attack, smooth-decay ($0.82$) peak ballistics in `useAudioRecordingDock` with silence re-render suppression.
+  - Connected playback `<audio>` elements directly into Web Audio `AnalyserNode` for true real-time output signal measurement.
+- **Output Knob 100% Center (0% to 200% Range)**:
+  - Modified [`RecordingPanel`](src/renderer/components/RecordingPanel.tsx) output knob (`VOL`) to range from `0.0` to `2.0` with `defaultValue={1.0}` and `min={0.0}`, placing `100%` at the 12 o'clock center position matching the `GAIN` input knob.
+  - Updated [`AudioPlayerContext`](src/renderer/context/AudioPlayerContext.tsx) to connect a `GainNode` in the playback Web Audio graph, allowing transparent volume boost up to $2.0$ ($+6\text{ dB}$) while keeping `HTMLMediaElement.volume` capped at `1.0` to prevent browser `IndexSizeError`.
+  - Updated [`device-manager`](src/renderer/audio/device-manager.ts) storage clamping up to `2.0` to preserve boosted volume settings across app restarts.
+  - All **325 tests across 48 test suites passing** (`npm test`), **0 TypeScript errors**, clean production build (`npm run build`).
+
+
