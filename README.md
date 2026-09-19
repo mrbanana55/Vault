@@ -2,6 +2,8 @@
 
 Vault is a cross-platform desktop application for macOS and Windows designed for songwriters, producers, and musicians to capture, organize, and catalog musical voice memos and song ideas.
 
+![til](./demo.gif)
+
 ---
 
 ## Table of Contents
